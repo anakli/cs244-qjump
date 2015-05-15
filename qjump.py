@@ -21,6 +21,7 @@ import os.path
 import math
 
 
+
 # TODO: Don't just read the TODO sections in this code.  Remember that
 # one of the goals of this assignment is for you to learn how to use
 # Mininet. :-)
@@ -29,7 +30,7 @@ parser = ArgumentParser(description="Qjump arguments")
 parser.add_argument('--bw-link', '-B',
                     type=float,
                     help="Bandwidth of host links (Mb/s)",
-                    default=10)
+                    default=None)
 
 parser.add_argument('--dir', '-d',
                     help="Directory to store outputs",
@@ -45,9 +46,15 @@ parser.add_argument('--cong',
                     help="Congestion control algorithm to use",
                     default="cubic")
 
+parser.add_argument('--no-qjump', dest="qjump", help="Don't use QJump", action="store_false", default=True)
+
+parser.add_argument('--verbosity', '-v',
+                    help="Logging level",
+                    default="info")
 # Expt parameters
 args = parser.parse_args()
 
+lg.setLogLevel(args.verbosity)
 
 
 class SimpleTopo(Topo):
@@ -67,7 +74,28 @@ class SimpleTopo(Topo):
 	host2 = self.addHost('h2')
 	self.addLink(host2, switch, bw=args.bw_link)
 
+	
         return
+
+def _install_qjump(net, hostname, ifname):
+    host = net.get(hostname)
+    #out, err, exitcode = host.pexec("tc qdisc add dev %s-%s root qjump" % (hostname, ifname))
+    out, err, exitcode = host.pexec("tc qdisc add dev %s-%s parent 5:1 handle 6: qjump" % (hostname, ifname))
+    if exitcode != 0:
+        print("Error binding qjump to port %s-%s:" % (hostname, ifname))
+        print err
+    return exitcode
+
+def install_qjump(net):
+    h1 = net.get('h1')
+    out, err, exitcode = h1.pexec("ifconfig")
+    print out
+    results = []
+    for hostname, ifname in (('h1', 'eth0'), ('h2', 'eth0'), ('s0', 'eth1'), ('s0', 'eth2')):
+        results.append(_install_qjump(net, hostname, ifname))
+    if all(r == 0 for r in results):
+        print("Installed QJump on all ports")
+    return exitcode
 
 def start_iperf(net):
     h2 = net.get('h2')
@@ -79,6 +107,7 @@ def start_iperf(net):
 
 
 def start_ping(net):
+    print "Starting ping..."
     h1 = net.get('h1')
     h2 = net.get('h2')
     filename = os.path.join(args.dir, "ping.txt")
@@ -92,6 +121,8 @@ def qjump():
     topo = SimpleTopo()
     net = Mininet(topo=topo, host=CPULimitedHost, link=TCLink)
     net.start()
+    if args.qjump:
+        install_qjump(net)
     # This dumps the topology and how nodes are interconnected through
     # links.
     dumpNodeConnections(net.hosts)
@@ -102,7 +133,8 @@ def qjump():
 
     # Start iperf, webservers, etc.
     start_iperf(net)
-    
+   
+    sleep(10) 
     ping.terminate()
     net.stop()
 
