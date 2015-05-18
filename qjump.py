@@ -23,7 +23,7 @@ import time
 from iperf import IperfManager
 from ping import PingManager
 
-def qjump(topocls, src, dst, dir=".", time=10, cong="cubic"):
+def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic"):
     os.system("sysctl -w net.ipv4.tcp_congestion_control=%s" % cong)
     topo = topocls()
     net = Mininet(topo=topo, host=CPULimitedHost, link=TCLink)
@@ -33,12 +33,12 @@ def qjump(topocls, src, dst, dir=".", time=10, cong="cubic"):
     net.pingAll()
 
     iperfm = IperfManager(net, 'h2')
-    iperfm.start('h1', time=time)
+    iperfm.start('h1', time=expttime)
 
     pingm = PingManager(net, 'h1', 'h2', dir=dir)
     pingm.start()
 
-    time.sleep(time)
+    time.sleep(expttime)
 
     pingm.stop()
     iperfm.stop()
@@ -66,4 +66,4 @@ if __name__ == "__main__":
         os.makedirs(args.dir)
 
     from topos import SimpleTopo
-    qjump(SimpleTopo, 'h1', 'h2', dir=args.dir, time=args.time, cong=args.cong)
+    qjump(SimpleTopo, 'h1', 'h2', dir=args.dir, expttime=args.time, cong=args.cong)
