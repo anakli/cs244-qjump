@@ -64,10 +64,12 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
         time.sleep(expttime)
 
     finally:
-        pingm.stop()
-        if iperf:
+        if pingm in locals():
+            pingm.stop()
+        if iperf and iperf in locals():
             iperfm.stop()
-        net.stop()
+        if net in locals():
+            net.stop()
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Qjump arguments")
