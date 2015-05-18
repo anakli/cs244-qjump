@@ -20,6 +20,9 @@ import os
 import os.path
 import math
 
+from iperf import IperfManager
+from ping import PingManager
+
 parser = ArgumentParser(description="Qjump arguments")
 parser.add_argument('--bw-link', '-B',
                     type=float,
