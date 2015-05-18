@@ -37,32 +37,37 @@ def install_qjump(net):
             results.append(_install_qjump(node, ifname))
     if all(r == 0 for r in results):
         print("Installed QJump on all ports")
-        return 0
     else:
-        return -1
+        raise RuntimeError("Could not install QJump")
 
 def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qjump=True):
     os.system("sysctl -w net.ipv4.tcp_congestion_control=%s" % cong)
     topo = topocls()
-    net = Mininet(topo=topo, host=CPULimitedHost, link=TCLink)
-    net.start()
 
-    dumpNodeConnections(net.hosts)
-    net.pingAll()
+    try:
+        net = Mininet(topo=topo, host=CPULimitedHost, link=TCLink)
+        net.start()
 
-    if iperf:
-        iperfm = IperfManager(net, 'h2')
-        iperfm.start('h1', time=expttime)
+        dumpNodeConnections(net.hosts)
+        net.pingAll()
 
-    pingm = PingManager(net, 'h1', 'h2', dir=dir)
-    pingm.start()
+        if iperf:
+            iperfm = IperfManager(net, 'h2')
+            iperfm.start('h1', time=expttime)
 
-    time.sleep(expttime)
+        if qjump:
+            install_qjump(net)
 
-    pingm.stop()
-    if iperf:
-        iperfm.stop()
-    net.stop()
+        pingm = PingManager(net, 'h1', 'h2', dir=dir)
+        pingm.start()
+
+        time.sleep(expttime)
+
+    finally:
+        pingm.stop()
+        if iperf:
+            iperfm.stop()
+        net.stop()
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Qjump arguments")
