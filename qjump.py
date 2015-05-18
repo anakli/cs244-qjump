@@ -19,6 +19,7 @@ import sys
 import os
 import os.path
 import math
+import time
 
 from iperf import IperfManager
 from ping import PingManager
@@ -89,7 +90,9 @@ def qjump():
     pingm = PingManager(net, 'h1', 'h2', dir=args.dir)
     pingm.start()
 
-    ping.stop()
+    time.sleep(args.time)
+
+    pingm.stop()
     iperfm.stop()
     net.stop()
 
