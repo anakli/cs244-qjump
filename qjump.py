@@ -23,20 +23,25 @@ import time
 from iperf import IperfManager
 from ping import PingManager
 
-def _install_qjump(net, node, ifname):
-    out, err, exitcode = host.pexec("tc qdisc add dev %s-%s parent 5:1 handle 6: qjump" % (node.name, ifname))
+def _install_qjump(node, ifname):
+    _, err, exitcode = node.pexec("tc qdisc add dev %s parent 5:1 handle 6: qjump" % ifname)
     if exitcode != 0:
-        print("Error binding qjump to port %s-%s:" % (node.name, ifname))
+        print("Error binding qjump to port %s:" % ifname)
         print err
     return exitcode
 
 def install_qjump(net):
     results = []
-    for node in net:
+    ifnames = []
+    for nodename in net:
+        node = net.get(nodename)
         for ifname in node.intfNames():
+            if ifname == "lo":
+                continue
+            ifnames.append(ifname)
             results.append(_install_qjump(node, ifname))
     if all(r == 0 for r in results):
-        print("Installed QJump on all ports")
+        print("Installed QJump on all ports: " + ", ".join(ifnames))
     else:
         raise RuntimeError("Could not install QJump")
 
@@ -51,12 +56,12 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
         dumpNodeConnections(net.hosts)
         net.pingAll()
 
+        if qjump:
+            install_qjump(net)
+
         if iperf:
             iperfm = IperfManager(net, 'h2')
             iperfm.start('h1', time=expttime)
-
-        if qjump:
-            install_qjump(net)
 
         pingm = PingManager(net, 'h1', 'h2', dir=dir)
         pingm.start()
@@ -64,11 +69,11 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
         time.sleep(expttime)
 
     finally:
-        if pingm in locals():
+        if 'pingm' in locals():
             pingm.stop()
-        if iperf and iperf in locals():
+        if 'iperfm' in locals() and iperf:
             iperfm.stop()
-        if net in locals():
+        if 'net' in locals():
             net.stop()
 
 if __name__ == "__main__":
