@@ -20,11 +20,6 @@ import os
 import os.path
 import math
 
-
-# TODO: Don't just read the TODO sections in this code.  Remember that
-# one of the goals of this assignment is for you to learn how to use
-# Mininet. :-)
-
 parser = ArgumentParser(description="Qjump arguments")
 parser.add_argument('--bw-link', '-B',
                     type=float,
@@ -40,7 +35,7 @@ parser.add_argument('--time', '-t',
                     type=int,
                     default=10)
 
-# Linux uses CUBIC-TCP by default 
+# Linux uses CUBIC-TCP by default
 parser.add_argument('--cong',
                     help="Congestion control algorithm to use",
                     default="cubic")
@@ -53,37 +48,26 @@ args = parser.parse_args()
 class SimpleTopo(Topo):
     "Simple topology for qjump experiment."
 
-    def build(self, n=2):
-
-
-        # Here we create a switch.  If you change its name, its
-        # interface names will change from s0-eth1 to newname-eth1.
+    def build(self, n=2, bw=10):
         switch = self.addSwitch('s0')
+        for i in range(n):
+            host = self.addHost('h%d' % (i+1))
+            self.addLink(host, switch, bw=bw)
 
-        #create two hosts and links
-	host1 = self.addHost('h1')
-	self.addLink(host1, switch, bw=args.bw_link)
+# def start_iperf(net):
+#     h2 = net.get('h2')
+#     print "Starting iperf server..."
+#     server = h2.popen("iperf -s -w 16m")
+#     h1 = net.get('h1')
+#     client = h1.popen("iperf -c %s -t %s" % (h2.IP(), args.time))
+#     return client
 
-	host2 = self.addHost('h2')
-	self.addLink(host2, switch, bw=args.bw_link)
-
-        return
-
-def start_iperf(net):
-    h2 = net.get('h2')
-    print "Starting iperf server..."
-    server = h2.popen("iperf -s -w 16m")
-    h1 = net.get('h1')
-    client = h1.popen("iperf -c %s -t %s" % (h2.IP(), args.time))
-    return client
-
-
-def start_ping(net):
-    h1 = net.get('h1')
-    h2 = net.get('h2')
-    filename = os.path.join(args.dir, "ping.txt")
-    proc = h1.popen("ping %s -i 0.1 > %s" % (h2.IP(), filename), shell=True)
-    return proc
+# def start_ping(net):
+#     h1 = net.get('h1')
+#     h2 = net.get('h2')
+#     filename = os.path.join(args.dir, "ping.txt")
+#     proc = h1.popen("ping %s -i 0.1 > %s" % (h2.IP(), filename), shell=True)
+#     return proc
 
 def qjump():
     if not os.path.exists(args.dir):
@@ -92,19 +76,25 @@ def qjump():
     topo = SimpleTopo()
     net = Mininet(topo=topo, host=CPULimitedHost, link=TCLink)
     net.start()
-    # This dumps the topology and how nodes are interconnected through
-    # links.
+
     dumpNodeConnections(net.hosts)
-    # This performs a basic all pairs ping test.
     net.pingAll()
 
-    ping = start_ping(net)
+    iperfm = IperfManager(net, 'h2')
+    iperfm.start('h1', time=args.time)
 
-    # Start iperf, webservers, etc.
-    start_iperf(net)
-    
-    ping.terminate()
+    pingm = PingManager(net, 'h1', 'h2', dir=args.dir)
+    pingm.start()
+
+    ping.stop()
+    iperfm.stop()
     net.stop()
+
+class PingAndIperfTest(object):
+
+    def __init__(self, topo, src, dst):
+        """Creates a test in which"""
+        pass
 
 if __name__ == "__main__":
     qjump()
