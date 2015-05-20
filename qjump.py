@@ -68,6 +68,9 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
 
         time.sleep(expttime)
 
+    except Exception as e:
+        print("Error: " + str(e))
+
     finally:
         if 'pingm' in locals():
             pingm.stop()
