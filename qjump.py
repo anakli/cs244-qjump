@@ -5,9 +5,9 @@
 from mininet.node import CPULimitedHost
 from mininet.link import TCLink
 from mininet.net import Mininet
-from mininet.log import lg, info
 from mininet.util import dumpNodeConnections
 from mininet.cli import CLI
+import mininet.log
 
 from subprocess import Popen, PIPE
 from time import sleep, time
@@ -22,6 +22,7 @@ import time
 
 from iperf import IperfManager
 from ping import PingManager
+from qjumpm import QJumpManager
 
 def _install_qjump(node, ifname):
     _, err, exitcode = node.pexec("tc qdisc add dev %s parent 5:1 handle 6: qjump" % ifname)
@@ -57,19 +58,37 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
         net.pingAll()
 
         if qjump:
-            install_qjump(net)
+            #install_qjump(net)
+            qjumpm = QJumpManager()
+            qjumpm.install_qjump(net)
+            hpenv = qjumpm.create_env(priority=7)
+        else:
+            hpenv = None
 
         if iperf:
             iperfm = IperfManager(net, 'h2')
             iperfm.start('h1', time=expttime)
 
         pingm = PingManager(net, 'h1', 'h2', dir=dir)
-        pingm.start()
+        pingm.start(new_env=hpenv)
 
-        time.sleep(expttime)
+        start = time.time()
+        while time.time() - start < expttime:
+            sys.stdout.write("%.1f seconds remaining...\r" % (expttime + start - time.time()))
+            sys.stdout.flush()
+            if iperf:
+                if not iperfm.server_is_alive():
+                    raise RuntimeError("Iperf server is dead!")
+                clients_alive = iperfm.clients_are_alive()
+                if not all(clients_alive):
+                    raise RuntimeError("%d iperf client(s) are dead!" % clients_alive.count(False))
+        
+        print("Done.")
 
     except Exception as e:
         print("Error: " + str(e))
+        import traceback
+        traceback.print_exc()
 
     finally:
         if 'pingm' in locals():
@@ -107,7 +126,10 @@ if __name__ == "__main__":
                         help="Logging level",
                         default="info")
     args = parser.parse_args()
-    lg.setLogLevel(args.verbosity)
+    mininet.log.lg.setLogLevel(args.verbosity)
+
+    import logging
+    logging.basicConfig(level=mininet.log.LEVELS[args.verbosity])
 
     if not os.path.exists(args.dir):
         os.makedirs(args.dir)

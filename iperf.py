@@ -1,4 +1,5 @@
 import logging
+import sys
 logger = logging.getLogger(__name__)
 
 class IperfManager(object):
@@ -21,14 +22,28 @@ class IperfManager(object):
         args = ["iperf", "-s", "-w", self._num2size(windowsize)]
         self.server_proc = self.server.popen(args)
 
-        args = ["iperf", "-c", self.server.IP(), "-t", str(time)]
-        client_proc = self.net.get(client).popen(args)
+        args = ["iperf", "-c", self.server.IP(), "-t", str(time), "-i", "1"]
+        client_proc = self.net.get(client).popen(args, stdout=sys.stdout)
         self.client_procs.append(client_proc)
 
         return client_proc
+
+    def server_is_alive(self):
+        retcode = self.server_proc.poll()
+        if retcode is not None:
+            logger.debug("Iperf server process is dead!")
+        return retcode is None 
+
+    def clients_are_alive(self):
+        alive = []
+        for proc in self.client_procs:
+            retcode = proc.poll()
+            alive.append(retcode is None)
+        if not all(alive):
+            logger.debug("%d of the iperf processes died!" % alive.count(False)) 
+        return alive
 
     def stop(self):
         for proc in self.client_procs:
             proc.terminate()
         self.server_proc.terminate()
-
