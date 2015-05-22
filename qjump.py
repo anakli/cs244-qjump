@@ -24,28 +24,6 @@ from iperf import IperfManager
 from ping import PingManager
 from qjumpm import QJumpManager
 
-def _install_qjump(node, ifname):
-    _, err, exitcode = node.pexec("tc qdisc add dev %s parent 5:1 handle 6: qjump" % ifname)
-    if exitcode != 0:
-        print("Error binding qjump to port %s:" % ifname)
-        print err
-    return exitcode
-
-def install_qjump(net):
-    results = []
-    ifnames = []
-    for nodename in net:
-        node = net.get(nodename)
-        for ifname in node.intfNames():
-            if ifname == "lo":
-                continue
-            ifnames.append(ifname)
-            results.append(_install_qjump(node, ifname))
-    if all(r == 0 for r in results):
-        print("Installed QJump on all ports: " + ", ".join(ifnames))
-    else:
-        raise RuntimeError("Could not install QJump")
-
 def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qjump=True):
     os.system("sysctl -w net.ipv4.tcp_congestion_control=%s" % cong)
     topo = topocls()
@@ -58,7 +36,6 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
         net.pingAll()
 
         if qjump:
-            #install_qjump(net)
             qjumpm = QJumpManager()
             qjumpm.install_qjump(net)
             hpenv = qjumpm.create_env(priority=7)
@@ -67,7 +44,7 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
 
         if iperf:
             iperfm = IperfManager(net, 'h2')
-            iperfm.start('h1', time=expttime)
+            iperfm.start('h1', time=expttime, dir=args.dir)
 
         pingm = PingManager(net, 'h1', 'h2', dir=dir)
         pingm.start(new_env=hpenv)
