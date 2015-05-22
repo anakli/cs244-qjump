@@ -13,7 +13,6 @@ class PingManager(object):
         logfile = open(logfilename, "w")
         args = ["ping", self.dst.IP(), "-i", str(interval)]
         logging.info("Starting ping stream at interval %s seconds" % interval)
-        print env
         self.proc = self.src.popen(args, stdout=logfile, env=env, stderr=logfile)
         return self.proc
 
