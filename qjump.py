@@ -46,13 +46,17 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
             iperfm = IperfManager(net, 'h2')
             iperfm.start('h1', time=expttime, dir=args.dir)
 
-        pingm = PingManager(net, 'h1', 'h2', dir=dir)
-        pingm.start(new_env=hpenv)
+        pingm = PingManager(net, 'h1', 'h2')
+        pingm.start(new_env=hpenv, dir=args.dir)
 
         start = time.time()
+        last_report = expttime
         while time.time() - start < expttime:
-            sys.stdout.write("%.1f seconds remaining...\r" % (expttime + start - time.time()))
-            sys.stdout.flush()
+            secs_remaining = int(expttime + start - time.time())
+            if secs_remaining != last_report:
+                sys.stdout.write("%d seconds remaining...\r" % secs_remaining)
+                sys.stdout.flush()
+                last_report = secs_remaining
             if iperf:
                 if not iperfm.server_is_alive():
                     raise RuntimeError("Iperf server is dead!")
