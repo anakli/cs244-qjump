@@ -37,8 +37,9 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
 
         if qjump:
             qjumpm = QJumpManager()
+            qjumpm.install_module()
             qjumpm.install_qjump(net)
-            hpenv = qjumpm.create_env(priority=7)
+            hpenv = qjumpm.create_env(priority=4)
         else:
             hpenv = None
 
@@ -47,7 +48,7 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
             iperfm.start('h1', time=expttime, dir=args.dir)
 
         pingm = PingManager(net, 'h1', 'h2')
-        pingm.start(new_env=hpenv, dir=args.dir)
+        pingm.start(env=hpenv, dir=args.dir)
 
         start = time.time()
         last_report = expttime
@@ -76,6 +77,8 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
             pingm.stop()
         if 'iperfm' in locals() and iperf:
             iperfm.stop()
+        if 'qjumpm' in locals():
+            qjumpm.remove_module()
         if 'net' in locals():
             net.stop()
 

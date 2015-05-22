@@ -6,9 +6,31 @@ import subprocess
 
 class QJumpManager(object):
 
-    def __init__(self):
+    DEFAULT_MODULE_CONFIG = {
+        "verbose": 4,
+        "timeq": 15,
+        "bytesq": 1550,
+    }
+
+    def install_module(self, **kwargs):
+        """Installs the qjump module, uninstalling the existing one if it was already installed."""
+        if self.is_module_installed():
+            self.remove_module()
+
+        args = ["insmod", "sch_qjump.ko"]
+        for item in self.DEFAULT_MODULE_CONFIG.iteritems():
+            kwargs.setdefault(*item)
+        args.extend("%s=%s" % (k, v) for k, v in kwargs.iteritems())
+        logger.info("Installing: " + " ".join(args))
+        subprocess.call(args)
+
+    def remove_module(self):
+        logger.info("Removing qjump module")
         subprocess.call(["rmmod", "sch_qjump"])
-        subprocess.call("insmod sch_qjump.ko verbose=4 timeq=15 bytesq=1550 p7rate=300 p6rate=0 p5rate=0 p4rate=150 p3rate=30 p2rate=15 p1rate=5 p0rate=1", shell=True)
+
+    def is_module_installed(self):
+        retcode = subprocess.call("lsmod | grep sch_qjump", shell=True)
+        return retcode == 0
 
     def create_env(self, verbosity=0, priority=0, window=9999999):
         """Creates an environment variables dict that can be passed to a

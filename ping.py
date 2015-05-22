@@ -8,12 +8,13 @@ class PingManager(object):
         self.src = net.get(src)
         self.dst = net.get(dst)
 
-    def start(self, new_env=None, interval=0.1, dir=None, filename="ping.txt"):
+    def start(self, env=None, interval=0.1, dir=None, filename="ping.txt"):
         logfilename = os.path.join(dir, filename) if dir else filename
         logfile = open(logfilename, "w")
         args = ["ping", self.dst.IP(), "-i", str(interval)]
         logging.info("Starting ping stream at interval %s seconds" % interval)
-        self.proc = self.src.popen(args, stdout=logfile, env=new_env)
+        print env
+        self.proc = self.src.popen(args, stdout=logfile, env=env, stderr=logfile)
         return self.proc
 
     def stop(self):
