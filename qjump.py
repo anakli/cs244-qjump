@@ -25,7 +25,7 @@ from ping import PingManager
 from qjumpm import QJumpManager
 from plotter import Plotter
 
-def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, cong="cubic", iperf=True, qjump=True):
+def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, cong="cubic", iperf=True, qjump=True, tc_child=False):
     os.system("sysctl -w net.ipv4.tcp_congestion_control=%s" % cong)
 
     try:
@@ -39,9 +39,11 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
             qjumpm = QJumpManager()
             qjumpm.install_8021q()
             qjumpm.config_8021q(net)
-            qjumpm.install_module(timeq=15, bytesq=1550, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
-            qjumpm.install_qjump(net)
-            hpenv = qjumpm.create_env(priority=0, window=1550) # set window for TCP buffer = byteq * pXrate
+            #qjumpm.install_module(timeq=15, bytesq=1550, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
+            qjumpm.install_module(timeq=100, bytesq=25600, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
+            qjumpm.install_qjump(net, tc_child)
+            #hpenv = qjumpm.create_env(priority=0, window=1550) # set window for TCP buffer = byteq * pXrate
+            hpenv = qjumpm.create_env(priority=0, window=256) # set window for TCP buffer = byteq * pXrate
         else:
             hpenv = None
 
@@ -92,14 +94,22 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
         if 'qjumpm' in locals():
             qjumpm.remove_module()
 
-    return pingm.get_times()
+    try:
+        return pingm.get_times()
+    except NameError:
+        return []
+
+def log_arguments(args):
+    argsfile = open(os.path.join(args.dir, "args.txt"), "w")
+    for name, value in vars(args).iteritems():
+        argsfile.write("{0:>10}: {1}\n".format(name, value))
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Qjump arguments")
     parser.add_argument('--bw-link', '-B',
-                        type=float,
+                        type=str,
                         help="Bandwidth of host links (Mb/s)",
-                        default=10)
+                        default="10")
     parser.add_argument('--dir', '-d',
                         help="Directory to store outputs",
                         default='results')
@@ -137,15 +147,22 @@ if __name__ == "__main__":
     if not os.path.exists(args.dir):
         os.makedirs(args.dir)
 
-    kwargs = dict(dir=args.dir, expttime=args.time, cong=args.cong)
+    log_arguments(args)
+
+    if "none".startswith(args.bw_link.lower()):
+        bw_link = None
+    else:
+        bw_link = float(args.bw_link)
+
+    kwargs = dict(dir=args.dir, expttime=args.time, cong=args.cong, tc_child=(bw_link is not None))
 
     if args.topo == "simple":
         from topos import SimpleTopo
-        topo = SimpleTopo(bw=args.bw_link)
+        topo = SimpleTopo(bw=bw_link)
         kwargs.update(dict(iperf_src='h1', iperf_dst='h2', ping_src='h1', ping_dst='h2'))
     elif args.topo == "dc":
         from topos import DCTopo
-        topo = DCTopo(bw=args.bw_link)
+        topo = DCTopo(bw=bw_link)
         kwargs.update(dict(iperf_src='h7', iperf_dst='h10', ping_src='h8', ping_dst='h10'))
 
     if args.runall:

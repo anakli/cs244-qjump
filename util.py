@@ -18,4 +18,4 @@ def check_pexec(node, cmd, *args, **kwargs):
         return
     print out
     print err
-    raise subprocess.CalledProcessError("Command %r returned nonzero exit code %d" % (cmd, exitcode))
+    raise subprocess.CalledProcessError(exitcode, cmd)

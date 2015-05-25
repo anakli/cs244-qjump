@@ -93,16 +93,19 @@ class QJumpManager(object):
         new_env["LD_PRELOAD"] = "./qjump-app-util.so"
         return new_env
         
-    def _install_qjump(self, node, ifname):
+    def _install_qjump(self, node, ifname, tc_child):
         """Installs qjump on a particular node and interface."""
         try:
-            check_pexec(node, "tc qdisc add dev %s parent 5:1 handle 6: qjump" % ifname)
+            if tc_child:
+                check_pexec(node, "tc qdisc add dev %s parent 5:1 handle 6: qjump" % ifname)
+            else:
+                check_pexec(node, "tc qdisc add dev %s root qjump" % ifname)
         except subprocess.CalledProcessError as e:
             logger.error("Error binding qjump to port %s: " % ifname + str(e))
             return False
         return True
 
-    def install_qjump(self, net):
+    def install_qjump(self, net, tc_child):
         """Installs qjump on all interfaces and nodes in a network."""
         results = []
         ifnames = []
@@ -111,7 +114,7 @@ class QJumpManager(object):
                 if ifname == "lo":
                     continue
                 ifnames.append(ifname)
-                results.append(self._install_qjump(node, ifname))
+                results.append(self._install_qjump(node, ifname, tc_child))
         if all(results):
             logger.info("Installed QJump on all ports: " + ", ".join(ifnames))
         else:
