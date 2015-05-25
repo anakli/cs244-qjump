@@ -8,12 +8,13 @@ logger = logging.getLogger(__name__)
 class IperfManager(object):
     """Class to manage Iperf instances on a Mininet network."""
 
-    def __init__(self, net, server, dir=None, filename="iperf.txt"):
+    def __init__(self, net, server, dir=None, filename="iperf.txt", tcpdumpfile="tcpdump_iperf.txt"):
         self.net = net
         self.server = net.get(server)
         self.server_proc = None
         self.client_procs = []
         self.logfilename = os.path.join(dir, filename) if dir else filename
+        self.tcpdumpfile = os.path.join(dir, tcpdumpfile) if dir else tcpdumpfile
 
     @staticmethod
     def _num2size(num):
@@ -27,11 +28,15 @@ class IperfManager(object):
         self.server_proc = self.server.popen(args)
 
         logfile = open(self.logfilename, "w")
+        tcplogfile = open(self.tcpdumpfile, "w")
 
         args = ["iperf", "-c", self.server.IP(), "-t", str(time), "-i", "1", "-f", "b"]
         client_proc = self.net.get(client).popen(args, stdout=logfile)
         self.client_procs.append(client_proc)
 
+        args_tcpdump = ["tcpdump"]
+        client_tcpdump_proc = self.net.get(client).popen(args_tcpdump, stdout=tcplogfile)
+        
         return client_proc
 
     def server_is_alive(self):

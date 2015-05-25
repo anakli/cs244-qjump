@@ -39,9 +39,9 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
             qjumpm = QJumpManager()
             qjumpm.install_8021q()
             qjumpm.config_8021q(net)
-            qjumpm.install_module(p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
+            qjumpm.install_module(timeq=15, bytesq=1550, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
             qjumpm.install_qjump(net)
-            hpenv = qjumpm.create_env(priority=0)
+            hpenv = qjumpm.create_env(priority=0, window=1550) # set window for TCP buffer = byteq * pXrate
         else:
             hpenv = None
 
@@ -55,6 +55,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
         start = time.time()
         last_report = expttime
         while time.time() - start < expttime:
+            time.sleep(0.5)
             secs_remaining = int(expttime + start - time.time())
             if secs_remaining != last_report:
                 sys.stdout.write("%d seconds remaining...\r" % secs_remaining)
@@ -72,8 +73,6 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
         print sorted(pingm.get_times())
         if iperf:
             print iperfm.get_bandwidths()
-        # plotter = Plotter(pingm.get_times())
-        # plotter.plotCDFs(dir=args.dir, figname="pingCDF")
         
     except Exception as e:
         print("Error: " + str(e))
@@ -85,13 +84,13 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
             pingm.stop()
         if 'iperfm' in locals() and iperf:
             iperfm.stop()
-        if 'qjumpm' in locals():
-            qjumpm.remove_module()
         if 'net' in locals():
             try:
                 net.stop()
             except Exception as e:
                 print e
+        if 'qjumpm' in locals():
+            qjumpm.remove_module()
 
     return pingm.get_times()
 

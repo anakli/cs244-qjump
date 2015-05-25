@@ -3,13 +3,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 import subprocess
+from util import check_pexec
 
 class QJumpManager(object):
 
     DEFAULT_MODULE_CONFIG = {
         "verbose": 4,
-        "timeq": 15,
-        "bytesq": 1550,
     }
 
     def install_module(self, **kwargs):
@@ -22,16 +21,20 @@ class QJumpManager(object):
             kwargs.setdefault(*item)
         args.extend("%s=%s" % (k, v) for k, v in kwargs.iteritems())
         logger.info("Installing: " + " ".join(args))
-        exitcode = subprocess.call(args)
-        if exitcode:
-            logger.error("Nonzero exit code installing qjump: %d" % exitcode)
+        try:
+            subprocess.check_call(args)
+        except subprocess.CalledProcessError as e:
+            logger.error("Error installing qjump: " + str(e))
 
     def remove_module(self):
+        try:
+            subprocess.check_call(["rmmod", "sch_qjump"])
+        except subprocess.CalledProcessError as e:
+            logger.error("Error removing qjump: " + str(e))
+            return False
         logger.info("Removing qjump module")
-        exitcode = subprocess.call(["rmmod", "sch_qjump"])
-        if exitcode:
-            logger.error("Nonzero exit code removing qjump: %d" % exitcode)
-
+        return True
+        
     def is_module_installed(self):
         exitcode = subprocess.call("lsmod | grep sch_qjump", shell=True, stdout=subprocess.PIPE)
         return exitcode == 0
@@ -44,20 +47,21 @@ class QJumpManager(object):
         if self.is_8021q_installed():
             logger.debug("802.1Q kernel module is already installed")
             return
-        exitcode = subprocess.call(["modprobe", "8021q"])
-        if exitcode:
-            logger.error("Nonzero exit code installing 802.1Q kernel module: %d" % exitcode)
-        else:
-            logger.info("Installed the 802.1Q kernel module")
-        return exitcode == 0
+        try:
+            subprocess.check_call(["modprobe", "8021q"])
+        except subprocess.CalledProcessError as e:
+            logger.error("Error installing 802.1Q kernel module: " + str(e))
+            return False
+        logger.info("Installed the 802.1Q kernel module")
+        return True
 
     def _config_8021q(self, node, ifname):
         vlanid = "2"
         try:
-            subprocess.check_call(["vconfig", "add", ifname, vlanid])
+            check_pexec(node, ["vconfig", "add", ifname, vlanid])
             for i in range(8):
-                subprocess.check_call(["vconfig", "set_egress_map", ifname + "." + vlanid, str(i), str(i)], stdout=subprocess.PIPE)
-                subprocess.check_call(["vconfig", "set_ingress_map", ifname + "." + vlanid, str(i), str(i)], stdout=subprocess.PIPE)
+                check_pexec(node, ["vconfig", "set_egress_map", ifname + "." + vlanid, str(i), str(i)])
+                check_pexec(node, ["vconfig", "set_ingress_map", ifname + "." + vlanid, str(i), str(i)])
         except subprocess.CalledProcessError as e:
             logger.error("Error configuring 802.1Q kernel module: " + str(e))
             return False
@@ -67,12 +71,12 @@ class QJumpManager(object):
     def config_8021q(self, net):
         results = []
         ifnames = []
-        for switch in net.switches:
-            for ifname in switch.intfNames():
+        for host in net.hosts:
+            for ifname in host.intfNames():
                 if ifname == "lo":
                     continue
                 ifnames.append(ifname)
-                results.append(self._config_8021q(switch, ifname))
+                results.append(self._config_8021q(host, ifname))
         if all(results):
             logger.info("Configured 802.1Q on all ports: " + ", ".join(ifnames))
         else:
@@ -89,27 +93,26 @@ class QJumpManager(object):
         new_env["LD_PRELOAD"] = "./qjump-app-util.so"
         return new_env
         
-               
     def _install_qjump(self, node, ifname):
         """Installs qjump on a particular node and interface."""
-        _, err, exitcode = node.pexec("tc qdisc add dev %s parent 5:1 handle 6: qjump" % ifname)
-        if exitcode != 0:
-            print("Error binding qjump to port %s:" % ifname)
-            print err
-        return exitcode
+        try:
+            check_pexec(node, "tc qdisc add dev %s parent 5:1 handle 6: qjump" % ifname)
+        except subprocess.CalledProcessError as e:
+            logger.error("Error binding qjump to port %s: " % ifname + str(e))
+            return False
+        return True
 
     def install_qjump(self, net):
         """Installs qjump on all interfaces and nodes in a network."""
         results = []
         ifnames = []
-        for nodename in net:
-            node = net.get(nodename)
+        for node in net.hosts:
             for ifname in node.intfNames():
                 if ifname == "lo":
                     continue
                 ifnames.append(ifname)
                 results.append(self._install_qjump(node, ifname))
-        if all(r == 0 for r in results):
+        if all(results):
             logger.info("Installed QJump on all ports: " + ", ".join(ifnames))
         else:
             raise RuntimeError("Could not install QJump")
