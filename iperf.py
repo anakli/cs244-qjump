@@ -1,6 +1,7 @@
 import logging
 import sys
 import os
+from util import kill_safe
 logger = logging.getLogger(__name__)
 
 class IperfManager(object):
@@ -50,5 +51,5 @@ class IperfManager(object):
     def stop(self):
         logger.info("Stopping iperf stream(s)...")
         for proc in self.client_procs:
-            proc.kill()
-        self.server_proc.kill()
+            kill_safe(proc)
+        kill_safe(self.server_proc)

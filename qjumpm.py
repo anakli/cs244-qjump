@@ -29,7 +29,7 @@ class QJumpManager(object):
         subprocess.call(["rmmod", "sch_qjump"])
 
     def is_module_installed(self):
-        retcode = subprocess.call("lsmod | grep sch_qjump", shell=True)
+        retcode = subprocess.call("lsmod | grep sch_qjump", shell=True, stdout=subprocess.PIPE)
         return retcode == 0
 
     def create_env(self, verbosity=0, priority=0, window=9999999):
@@ -64,7 +64,7 @@ class QJumpManager(object):
                 ifnames.append(ifname)
                 results.append(self._install_qjump(node, ifname))
         if all(r == 0 for r in results):
-            print("Installed QJump on all ports: " + ", ".join(ifnames))
+            logger.info("Installed QJump on all ports: " + ", ".join(ifnames))
         else:
             raise RuntimeError("Could not install QJump")
 

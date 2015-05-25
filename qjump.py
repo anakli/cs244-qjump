@@ -37,9 +37,9 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
 
         if qjump:
             qjumpm = QJumpManager()
-            qjumpm.install_module()
+            qjumpm.install_module(p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
             qjumpm.install_qjump(net)
-            hpenv = qjumpm.create_env(priority=4)
+            hpenv = qjumpm.create_env(priority=0)
         else:
             hpenv = None
 
@@ -47,8 +47,8 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
             iperfm = IperfManager(net, 'h2')
             iperfm.start('h1', time=expttime, dir=args.dir)
 
-        pingm = PingManager(net, 'h1', 'h2')
-        pingm.start(env=hpenv, dir=args.dir)
+        pingm = PingManager(net, 'h1', 'h2', dir=args.dir)
+        pingm.start(env=hpenv)
 
         start = time.time()
         last_report = expttime
@@ -66,6 +66,8 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
                     raise RuntimeError("%d iperf client(s) are dead!" % clients_alive.count(False))
         
         print("Done.")
+
+        pingm.get_times()
 
     except Exception as e:
         print("Error: " + str(e))
