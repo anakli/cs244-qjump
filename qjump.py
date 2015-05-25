@@ -157,7 +157,8 @@ if __name__ == "__main__":
         ping_noQjump = qjump(topo, iperf=True, qjump=False, **kwargs)
         print "********** Running ping + iperf with Qjump..."
         ping_Qjump = qjump(topo, iperf=True, qjump=True, **kwargs)
-        
+        ping_Qjump = filter(lambda x: x is not None, ping_Qjump)
+
         plotter = Plotter(ping_alone, ping_noQjump, ping_Qjump)
         plotter.plotCDFs(dir=args.dir, figname="pingCDFs")
 
