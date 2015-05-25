@@ -33,7 +33,7 @@ class DCTopo(Topo):
         self.addLink(aggr_switch, ToR1_switch, bw=bw)
         self.addLink(aggr_switch, ToR2_switch, bw=bw)
         self.addLink(aggr_switch, ToR3_switch, bw=bw)
-        for i in range(1,n+1):
+        for i in range(1,num_hosts+1):
             host = self.addHost('h%d' % i)
             if i in range(1,7):
                 self.addLink(host, ToR1_switch, bw=bw)

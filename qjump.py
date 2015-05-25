@@ -23,13 +23,13 @@ import time
 from iperf import IperfManager
 from ping import PingManager
 from qjumpm import QJumpManager
+from plotter import Plotter
 
-def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qjump=True):
+def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, cong="cubic", iperf=True, qjump=True):
     os.system("sysctl -w net.ipv4.tcp_congestion_control=%s" % cong)
-    topo = topocls()
 
     try:
-        net = Mininet(topo=topo, host=CPULimitedHost, link=TCLink)
+        net = Mininet(topo=topo, link=TCLink)
         net.start()
 
         dumpNodeConnections(net.hosts)
@@ -37,6 +37,8 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
 
         if qjump:
             qjumpm = QJumpManager()
+            qjumpm.install_8021q()
+            qjumpm.config_8021q(net)
             qjumpm.install_module(p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
             qjumpm.install_qjump(net)
             hpenv = qjumpm.create_env(priority=0)
@@ -44,10 +46,10 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
             hpenv = None
 
         if iperf:
-            iperfm = IperfManager(net, 'h2')
-            iperfm.start('h1', time=expttime, dir=args.dir)
+            iperfm = IperfManager(net, iperf_dst, dir=dir)
+            iperfm.start(iperf_src, time=expttime)
 
-        pingm = PingManager(net, 'h1', 'h2', dir=args.dir)
+        pingm = PingManager(net, ping_src, ping_dst, dir=dir)
         pingm.start(env=hpenv)
 
         start = time.time()
@@ -67,8 +69,12 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
         
         print("Done.")
 
-        pingm.get_times()
-
+        print sorted(pingm.get_times())
+        if iperf:
+            print iperfm.get_bandwidths()
+        # plotter = Plotter(pingm.get_times())
+        # plotter.plotCDFs(dir=args.dir, figname="pingCDF")
+        
     except Exception as e:
         print("Error: " + str(e))
         import traceback
@@ -82,7 +88,12 @@ def qjump(topocls, src, dst, dir=".", expttime=10, cong="cubic", iperf=True, qju
         if 'qjumpm' in locals():
             qjumpm.remove_module()
         if 'net' in locals():
-            net.stop()
+            try:
+                net.stop()
+            except Exception as e:
+                print e
+
+    return pingm.get_times()
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Qjump arguments")
@@ -111,6 +122,13 @@ if __name__ == "__main__":
     parser.add_argument('--verbosity', '-v',
                         help="Logging level",
                         default="info")
+    parser.add_argument('--runall',
+                        help="Run ping alone, with iperf no qjump, with qjump",
+                        action="store_true",
+                        default=False)
+    parser.add_argument('--topo', choices=("simple", "dc"),
+                        type=str, help="Topology to use",
+                        default="simple")
     args = parser.parse_args()
     mininet.log.lg.setLogLevel(args.verbosity)
 
@@ -120,6 +138,30 @@ if __name__ == "__main__":
     if not os.path.exists(args.dir):
         os.makedirs(args.dir)
 
-    from topos import SimpleTopo
-    qjump(SimpleTopo, 'h1', 'h2', dir=args.dir, expttime=args.time,
-            cong=args.cong, iperf=args.iperf, qjump=args.qjump)
+    kwargs = dict(dir=args.dir, expttime=args.time, cong=args.cong)
+
+    if args.topo == "simple":
+        from topos import SimpleTopo
+        topo = SimpleTopo(bw=args.bw_link)
+        kwargs.update(dict(iperf_src='h1', iperf_dst='h2', ping_src='h1', ping_dst='h2'))
+    elif args.topo == "dc":
+        from topos import DCTopo
+        topo = DCTopo(bw=args.bw_link)
+        kwargs.update(dict(iperf_src='h7', iperf_dst='h10', ping_src='h8', ping_dst='h10'))
+
+    if args.runall:
+        print "********** Running all tests for Figure 3..."
+        print "********** Running ping alone..."
+        ping_alone = qjump(topo, iperf=False, qjump=False, **kwargs)
+        print "********** Running ping + iperf, no Qjump..."
+        ping_noQjump = qjump(topo, iperf=True, qjump=False, **kwargs)
+        print "********** Running ping + iperf with Qjump..."
+        ping_Qjump = qjump(topo, iperf=True, qjump=True, **kwargs)
+        
+        plotter = Plotter(ping_alone, ping_noQjump, ping_Qjump)
+        plotter.plotCDFs(dir=args.dir, figname="pingCDFs")
+
+    else:
+        qjump(topo, iperf=args.iperf, qjump=args.qjump, **kwargs)
+
+

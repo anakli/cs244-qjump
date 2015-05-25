@@ -13,7 +13,7 @@ class PingManager(object):
     def start(self, env=None, interval=0.1):
         logfile = open(self.logfilename, "w")
         args = ["ping", self.dst.IP(), "-i", str(interval)]
-        logging.info("Starting ping stream at interval %s seconds" % interval)
+        logging.info("Starting ping stream from %s to %s at interval %s seconds" % (self.src, self.dst, interval))
         self.proc = self.src.popen(args, stdout=logfile, env=env, stderr=logfile)
         return self.proc
 
@@ -35,5 +35,4 @@ class PingManager(object):
             time = float(m.group(3))
             times.extend([None] * (icmp_seq - len(times) - 1))
             times.append(time)
-        print times
         return times
