@@ -76,7 +76,9 @@ def qjump_once(*args, **kwargs):
     log_arguments(*args, **kwargs)
     qjump(*args, **kwargs)
 
-def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, cong="cubic", iperf=True, qjump=True, tc_child=False, qjump_module_args=dict(), qjump_env_args=dict()):
+def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, \
+        cong="cubic", iperf=True, qjump=True, tc_child=False, qjump_module_args=dict(), \
+        qjump_env_args=dict(), ping_interval=0.01):
     try:
         subprocess.check_call(["sysctl", "-w", "net.ipv4.tcp_congestion_control=%s" % cong])
     except subprocess.CalledProcessError as e:
@@ -103,7 +105,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
             iperfm = IperfManager(net, iperf_dst, dir=dir)
             iperfm.start(iperf_src, time=expttime)
 
-        pingm = PingManager(net, ping_src, ping_dst, dir=dir)
+        pingm = PingManager(net, ping_src, ping_dst, dir=dir, interval=ping_interval)
         pingm.start(env=hpenv)
 
         start = time.time()
@@ -185,6 +187,9 @@ if __name__ == "__main__":
     parser.add_argument('--topo', choices=("simple", "dc"),
                         type=str, help="Topology to use",
                         default="simple")
+    parser.add_argument("--ping-interval",
+                        type=float, help="Ping interval",
+                        default=0.01)
     args = parser.parse_args()
     mininet.log.lg.setLogLevel(args.verbosity)
 
@@ -196,7 +201,7 @@ if __name__ == "__main__":
     else:
         bw_link = float(args.bw_link)
 
-    kwargs = dict(dir=args.dir, expttime=args.time, cong=args.cong, tc_child=(bw_link is not None))
+    kwargs = dict(dir=args.dir, expttime=args.time, cong=args.cong, tc_child=(bw_link is not None), ping_interval=args.ping_interval)
 
     if args.topo == "simple":
         from topos import SimpleTopo
