@@ -25,14 +25,16 @@ from plotter import Plotter
 
 DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=15, bytesq=15500, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
 DEFAULY_QJUMP_ENV_ARGS = dict(priority=0, window=15500)
+DEFAULT_RESULTS_DIR = "."
 
-def log_arguments(*args, **kwargs):
+def log_arguments(topo, *args, **kwargs):
     argsfile = open(os.path.join(kwargs.get("dir", "."), "args.txt"), "w")
     argsfile.write("Started at " + time.asctime() + "\n")
     argsfile.write("Git commit: " + subprocess.check_output(['git', 'rev-parse', 'HEAD']) + "\n")
-    argsfile.write("Positional arguments:\n")
+    argsfile.write("Topology: " + topo.description_for_qjump + "\n")
+    argsfile.write("\nPositional arguments:\n")
     argsfile.write("\n".join(map(lambda x: "    " + str(x), args)))
-    argsfile.write("Keyword arguments:\n")
+    argsfile.write("\nKeyword arguments:\n")
     for name, value in kwargs.iteritems():
         argsfile.write("    {0:>10} = {1}\n".format(name, value))
 
@@ -41,12 +43,14 @@ def make_results_dir(dir):
         dir = os.path.join("results", "results" + time.strftime("%Y%m%d-%H%M%S"))
     if not os.path.exists(dir):
         os.makedirs(dir)
+    return dir
 
 def qjump_all(*args, **kwargs):
     """Runs all three tests for Figure 3a. Replaces 'iperf' and 'qjump'
     arguments with its own."""
 
-    make_results_dir(kwargs.get("dir", DEFAULT_RESULTS_DIR))
+    dirname = make_results_dir(kwargs.get("dir", DEFAULT_RESULTS_DIR))
+    kwargs["dir"] = dirname
     log_arguments(*args, **kwargs)
 
     print("*** Test for ping alone")
@@ -62,12 +66,13 @@ def qjump_all(*args, **kwargs):
     ping_Qjump = qjump(*args, **kwargs)
     if ping_Qjump.count(None) > 0:
         logger.warning("Ignoring %d dropped ping packets in QJump run", ping_Qjump.count(None))
-    ping_Qjump = filter(lambda x: x is not None, pingQjump)
+    ping_Qjump = filter(lambda x: x is not None, ping_Qjump)
     plotter = Plotter(ping_alone, ping_noQjump, ping_Qjump)
     plotter.plotCDFs(dir=kwargs.get("dir", "."), figname="pingCDFs")
 
 def qjump_once(*args, **kwargs):
-    make_results_dir(kwargs.get("dir", DEFAULT_RESULTS_DIR))
+    dirname = make_results_dir(kwargs.get("dir", DEFAULT_RESULTS_DIR))
+    kwargs["dir"] = dirname
     log_arguments(*args, **kwargs)
     qjump(*args, **kwargs)
 
@@ -205,6 +210,6 @@ if __name__ == "__main__":
     if args.runall:
         qjump_all(topo, **kwargs)
     else:
-        qjump(topo, iperf=args.iperf, qjump=args.qjump, **kwargs)
+        qjump_once(topo, iperf=args.iperf, qjump=args.qjump, **kwargs)
 
 

@@ -10,7 +10,7 @@ class PingManager(object):
         self.dst = net.get(dst)
         self.logfilename = os.path.join(dir, filename) if dir else filename
 
-    def start(self, env=None, interval=0.1):
+    def start(self, env=None, interval=0.01):
         logfile = open(self.logfilename, "w")
         args = ["ping", self.dst.IP(), "-i", str(interval)]
         logging.info("Starting ping stream from %s to %s at interval %s seconds" % (self.src, self.dst, interval))
