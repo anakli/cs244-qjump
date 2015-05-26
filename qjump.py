@@ -41,6 +41,9 @@ def log_arguments(topo, *args, **kwargs):
 def make_results_dir(dir):
     if dir is None:
         dir = os.path.join("results", "results" + time.strftime("%Y%m%d-%H%M%S"))
+        if os.path.exists("last"):
+            os.unlink("last")
+        os.symlink(dir, "last")
     if not os.path.exists(dir):
         os.makedirs(dir)
     return dir
@@ -105,8 +108,8 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
             iperfm = IperfManager(net, iperf_dst, dir=dir)
             iperfm.start(iperf_src, time=expttime)
 
-        pingm = PingManager(net, ping_src, ping_dst, dir=dir, interval=ping_interval)
-        pingm.start(env=hpenv)
+        pingm = PingManager(net, ping_src, ping_dst, dir=dir)
+        pingm.start(env=hpenv, interval=ping_interval)
 
         start = time.time()
         last_report = expttime
