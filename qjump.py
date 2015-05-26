@@ -9,21 +9,28 @@ from mininet.util import dumpNodeConnections
 import mininet.log
 
 import subprocess
-from time import sleep, time, asctime
 from argparse import ArgumentParser
 
 import sys
 import os
 import os.path
 import time
+import logging
+logger = logging.getLogger(__name__)
 
 from iperf import IperfManager
 from ping import PingManager
 from qjumpm import QJumpManager
 from plotter import Plotter
 
-def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, cong="cubic", iperf=True, qjump=True, tc_child=False):
-    os.system("sysctl -w net.ipv4.tcp_congestion_control=%s" % cong)
+DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=15, bytesq=15500, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
+DEFAULY_QJUMP_ENV_ARGS = dict(priority=0, window=15500)
+
+def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, cong="cubic", iperf=True, qjump=True, tc_child=False, qjump_module_args=dict(), qjump_env_args=dict()):
+    try:
+        subprocess.check_call(["sysctl", "-w", "net.ipv4.tcp_congestion_control=%s" % cong])
+    except subprocess.CalledProcessError as e:
+        logger.error("Error setting TCP congestion control algorithm: " + str(e))
 
     try:
         net = Mininet(topo=topo, link=TCLink)
@@ -36,11 +43,9 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
             qjumpm = QJumpManager()
             qjumpm.install_8021q()
             qjumpm.config_8021q(net)
-            qjumpm.install_module(timeq=15, bytesq=15500, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
-            #qjumpm.install_module(timeq=100, bytesq=25600, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
+            qjumpm.install_module(**qjump_module_args)
             qjumpm.install_qjump(net, tc_child)
-            hpenv = qjumpm.create_env(priority=0, window=15500) # set window for TCP buffer = byteq * pXrate
-            #hpenv = qjumpm.create_env(priority=0, window=256) # set window for TCP buffer = byteq * pXrate
+            hpenv = qjumpm.create_env(**qjump_env_args)
         else:
             hpenv = None
 
@@ -66,13 +71,13 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
                 clients_alive = iperfm.clients_are_alive()
                 if not all(clients_alive):
                     raise RuntimeError("%d iperf client(s) are dead!" % clients_alive.count(False))
-        
+
         print("Done.")
 
         print sorted(pingm.get_times())
         if iperf:
             print iperfm.get_bandwidths()
-        
+
     except Exception as e:
         print("Error: " + str(e))
         import traceback
@@ -98,7 +103,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
 
 def log_arguments(args):
     argsfile = open(os.path.join(args.dir, "args.txt"), "w")
-    argsfile.write("Started at " + asctime() + "\n")
+    argsfile.write("Started at " + time.asctime() + "\n")
     argsfile.write("Git commit: " + subprocess.check_output(['git', 'rev-parse', 'HEAD']) + "\n")
     argsfile.write("Arguments:\n")
     for name, value in vars(args).iteritems():
@@ -112,7 +117,7 @@ if __name__ == "__main__":
                         default="10")
     parser.add_argument('--dir', '-d',
                         help="Directory to store outputs",
-                        default='results')
+                        default=None)
     parser.add_argument('--time', '-t',
                         help="Duration (sec) to run the experiment",
                         type=int,
@@ -144,6 +149,8 @@ if __name__ == "__main__":
     import logging
     logging.basicConfig(level=mininet.log.LEVELS[args.verbosity])
 
+    if args.dir is None:
+        args.dir = os.path.join("results", "results" + time.strftime("%Y%m%d-%H%M%S"))
     if not os.path.exists(args.dir):
         os.makedirs(args.dir)
 
