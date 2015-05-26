@@ -6,18 +6,15 @@ from mininet.node import CPULimitedHost
 from mininet.link import TCLink
 from mininet.net import Mininet
 from mininet.util import dumpNodeConnections
-from mininet.cli import CLI
 import mininet.log
 
-from subprocess import Popen, PIPE
-from time import sleep, time
-from multiprocessing import Process
+import subprocess
+from time import sleep, time, asctime
 from argparse import ArgumentParser
 
 import sys
 import os
 import os.path
-import math
 import time
 
 from iperf import IperfManager
@@ -39,11 +36,11 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
             qjumpm = QJumpManager()
             qjumpm.install_8021q()
             qjumpm.config_8021q(net)
-            #qjumpm.install_module(timeq=15, bytesq=1550, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
-            qjumpm.install_module(timeq=100, bytesq=25600, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
+            qjumpm.install_module(timeq=15, bytesq=15500, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
+            #qjumpm.install_module(timeq=100, bytesq=25600, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
             qjumpm.install_qjump(net, tc_child)
-            #hpenv = qjumpm.create_env(priority=0, window=1550) # set window for TCP buffer = byteq * pXrate
-            hpenv = qjumpm.create_env(priority=0, window=256) # set window for TCP buffer = byteq * pXrate
+            hpenv = qjumpm.create_env(priority=0, window=15500) # set window for TCP buffer = byteq * pXrate
+            #hpenv = qjumpm.create_env(priority=0, window=256) # set window for TCP buffer = byteq * pXrate
         else:
             hpenv = None
 
@@ -101,6 +98,9 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
 
 def log_arguments(args):
     argsfile = open(os.path.join(args.dir, "args.txt"), "w")
+    argsfile.write("Started at " + asctime() + "\n")
+    argsfile.write("Git commit: " + subprocess.check_output(['git', 'rev-parse', 'HEAD']) + "\n")
+    argsfile.write("Arguments:\n")
     for name, value in vars(args).iteritems():
         argsfile.write("{0:>10}: {1}\n".format(name, value))
 
