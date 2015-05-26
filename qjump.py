@@ -24,11 +24,13 @@ from qjumpm import QJumpManager
 from plotter import Plotter
 
 DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=15, bytesq=15500, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
-DEFAULY_QJUMP_ENV_ARGS = dict(priority=0, window=15500)
+DEFAULT_QJUMP_ENV_ARGS = dict(priority=0, window=15500)
 DEFAULT_RESULTS_DIR = "."
 
 def log_arguments(topo, *args, **kwargs):
-    argsfile = open(os.path.join(kwargs.get("dir", "."), "args.txt"), "w")
+    kwargs.setdefault("qjump_module_args", DEFAULT_QJUMP_MODULE_ARGS)
+    kwargs.setdefault("qjump_env_args", DEFAULT_QJUMP_ENV_ARGS)
+    argsfile = open(os.path.join(kwargs.get("dir", DEFAULT_RESULTS_DIR), "args.txt"), "w")
     argsfile.write("Started at " + time.asctime() + "\n")
     argsfile.write("Git commit: " + subprocess.check_output(['git', 'rev-parse', 'HEAD']) + "\n")
     argsfile.write("Topology: " + topo.description_for_qjump + "\n")
@@ -36,7 +38,7 @@ def log_arguments(topo, *args, **kwargs):
     argsfile.write("\n".join(map(lambda x: "    " + str(x), args)))
     argsfile.write("\nKeyword arguments:\n")
     for name, value in kwargs.iteritems():
-        argsfile.write("    {0:>10} = {1}\n".format(name, value))
+        argsfile.write(" {0:>15} = {1}\n".format(name, value))
 
 def make_results_dir(dir):
     if dir is None:
@@ -80,8 +82,8 @@ def qjump_once(*args, **kwargs):
     qjump(*args, **kwargs)
 
 def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, \
-        cong="cubic", iperf=True, qjump=True, tc_child=False, qjump_module_args=dict(), \
-        qjump_env_args=dict(), ping_interval=0.01):
+        cong="cubic", iperf=True, qjump=True, tc_child=False, qjump_module_args=DEFAULT_QJUMP_MODULE_ARGS, \
+        qjump_env_args=DEFAULT_QJUMP_ENV_ARGS, ping_interval=0.01):
     try:
         subprocess.check_call(["sysctl", "-w", "net.ipv4.tcp_congestion_control=%s" % cong])
     except subprocess.CalledProcessError as e:
