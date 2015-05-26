@@ -26,6 +26,51 @@ from plotter import Plotter
 DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=15, bytesq=15500, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
 DEFAULY_QJUMP_ENV_ARGS = dict(priority=0, window=15500)
 
+def log_arguments(*args, **kwargs):
+    argsfile = open(os.path.join(kwargs.get("dir", "."), "args.txt"), "w")
+    argsfile.write("Started at " + time.asctime() + "\n")
+    argsfile.write("Git commit: " + subprocess.check_output(['git', 'rev-parse', 'HEAD']) + "\n")
+    argsfile.write("Positional arguments:\n")
+    argsfile.write("\n".join(map(lambda x: "    " + str(x), args)))
+    argsfile.write("Keyword arguments:\n")
+    for name, value in kwargs.iteritems():
+        argsfile.write("    {0:>10} = {1}\n".format(name, value))
+
+def make_results_dir(dir):
+    if dir is None:
+        dir = os.path.join("results", "results" + time.strftime("%Y%m%d-%H%M%S"))
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+def qjump_all(*args, **kwargs):
+    """Runs all three tests for Figure 3a. Replaces 'iperf' and 'qjump'
+    arguments with its own."""
+
+    make_results_dir(kwargs.get("dir", DEFAULT_RESULTS_DIR))
+    log_arguments(*args, **kwargs)
+
+    print("*** Test for ping alone")
+    kwargs.update(dict(iperf=False, qjump=False))
+    ping_alone = qjump(*args, **kwargs)
+
+    print("*** Test for ping + iperf without QJump")
+    kwargs.update(dict(iperf=True, qjump=False))
+    ping_noQjump = qjump(*args, **kwargs)
+
+    print("*** Test for ping + iperf with QJump")
+    kwargs.update(dict(iperf=True, qjump=True))
+    ping_Qjump = qjump(*args, **kwargs)
+    if ping_Qjump.count(None) > 0:
+        logger.warning("Ignoring %d dropped ping packets in QJump run", ping_Qjump.count(None))
+    ping_Qjump = filter(lambda x: x is not None, pingQjump)
+    plotter = Plotter(ping_alone, ping_noQjump, ping_Qjump)
+    plotter.plotCDFs(dir=kwargs.get("dir", "."), figname="pingCDFs")
+
+def qjump_once(*args, **kwargs):
+    make_results_dir(kwargs.get("dir", DEFAULT_RESULTS_DIR))
+    log_arguments(*args, **kwargs)
+    qjump(*args, **kwargs)
+
 def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, cong="cubic", iperf=True, qjump=True, tc_child=False, qjump_module_args=dict(), qjump_env_args=dict()):
     try:
         subprocess.check_call(["sysctl", "-w", "net.ipv4.tcp_congestion_control=%s" % cong])
@@ -101,14 +146,6 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
     except NameError:
         return []
 
-def log_arguments(args):
-    argsfile = open(os.path.join(args.dir, "args.txt"), "w")
-    argsfile.write("Started at " + time.asctime() + "\n")
-    argsfile.write("Git commit: " + subprocess.check_output(['git', 'rev-parse', 'HEAD']) + "\n")
-    argsfile.write("Arguments:\n")
-    for name, value in vars(args).iteritems():
-        argsfile.write("{0:>10}: {1}\n".format(name, value))
-
 if __name__ == "__main__":
     parser = ArgumentParser(description="Qjump arguments")
     parser.add_argument('--bw-link', '-B',
@@ -149,13 +186,6 @@ if __name__ == "__main__":
     import logging
     logging.basicConfig(level=mininet.log.LEVELS[args.verbosity])
 
-    if args.dir is None:
-        args.dir = os.path.join("results", "results" + time.strftime("%Y%m%d-%H%M%S"))
-    if not os.path.exists(args.dir):
-        os.makedirs(args.dir)
-
-    log_arguments(args)
-
     if "none".startswith(args.bw_link.lower()):
         bw_link = None
     else:
@@ -173,18 +203,7 @@ if __name__ == "__main__":
         kwargs.update(dict(iperf_src='h7', iperf_dst='h10', ping_src='h8', ping_dst='h10'))
 
     if args.runall:
-        print "********** Running all tests for Figure 3..."
-        print "********** Running ping alone..."
-        ping_alone = qjump(topo, iperf=False, qjump=False, **kwargs)
-        print "********** Running ping + iperf, no Qjump..."
-        ping_noQjump = qjump(topo, iperf=True, qjump=False, **kwargs)
-        print "********** Running ping + iperf with Qjump..."
-        ping_Qjump = qjump(topo, iperf=True, qjump=True, **kwargs)
-        ping_Qjump = filter(lambda x: x is not None, ping_Qjump)
-
-        plotter = Plotter(ping_alone, ping_noQjump, ping_Qjump)
-        plotter.plotCDFs(dir=args.dir, figname="pingCDFs")
-
+        qjump_all(topo, **kwargs)
     else:
         qjump(topo, iperf=args.iperf, qjump=args.qjump, **kwargs)
 
