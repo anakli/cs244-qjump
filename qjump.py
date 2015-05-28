@@ -23,21 +23,26 @@ from ping import PingManager
 from qjumpm import QJumpManager
 from plotter import Plotter
 
-DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=15, bytesq=15500, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
+DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=15, bytesq=1550, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
 DEFAULT_QJUMP_ENV_ARGS = dict(priority=0, window=15500)
 DEFAULT_RESULTS_DIR = "."
 
-def log_arguments(topo, *args, **kwargs):
-    kwargs.setdefault("qjump_module_args", DEFAULT_QJUMP_MODULE_ARGS)
-    kwargs.setdefault("qjump_env_args", DEFAULT_QJUMP_ENV_ARGS)
+def log_arguments(topo, **kwargs):
     argsfile = open(os.path.join(kwargs.get("dir", DEFAULT_RESULTS_DIR), "args.txt"), "w")
     argsfile.write("Started at " + time.asctime() + "\n")
     argsfile.write("Git commit: " + subprocess.check_output(['git', 'rev-parse', 'HEAD']) + "\n")
     argsfile.write("Topology: " + topo.description_for_qjump + "\n")
-    argsfile.write("\nPositional arguments:\n")
-    argsfile.write("\n".join(map(lambda x: "    " + str(x), args)))
-    argsfile.write("\nKeyword arguments:\n")
-    for name, value in kwargs.iteritems():
+    argsfile.write("\nQJump module arguments:\n")
+    for name, value in sorted(kwargs["qjump_module_args"].items()):
+        argsfile.write(" {0:>15} = {1}\n".format(name, value))
+    argsfile.write("\nQJump environment arguments:\n")
+    for name, value in sorted(kwargs["qjump_env_args"].items()):
+        argsfile.write(" {0:>15} = {1}\n".format(name, value))
+    argsfile.write("\nOther keyword arguments:\n")
+    kwargs = dict(kwargs)
+    kwargs.pop("qjump_module_args")
+    kwargs.pop("qjump_env_args")
+    for name, value in sorted(kwargs.items()):
         argsfile.write(" {0:>15} = {1}\n".format(name, value))
 
 def make_results_dir(dir):
@@ -50,40 +55,56 @@ def make_results_dir(dir):
         os.makedirs(dir)
     return dir
 
+def update_qjump_args(kwargs):
+    module_args = dict(DEFAULT_QJUMP_MODULE_ARGS)
+    if "qjump_module_args" in kwargs:
+        module_args.update(kwargs["qjump_module_args"])
+    env_args = dict(DEFAULT_QJUMP_ENV_ARGS)
+    if "qjump_env_args" in kwargs:
+        env_args.update(kwargs["qjump_env_args"])
+    kwargs["qjump_module_args"] = module_args
+    kwargs["qjump_env_args"] = env_args
+
 def qjump_all(*args, **kwargs):
     """Runs all three tests for Figure 3a. Replaces 'iperf' and 'qjump'
     arguments with its own."""
 
     dirname = make_results_dir(kwargs.get("dir", DEFAULT_RESULTS_DIR))
     kwargs["dir"] = dirname
+    update_qjump_args(kwargs)
     log_arguments(*args, **kwargs)
 
     print("*** Test for ping alone")
-    kwargs.update(dict(iperf=False, qjump=False))
+    os.mkdir(os.path.join(dirname, "ping-alone"))
+    kwargs.update(dict(iperf=False, qjump=False, dir=os.path.join(dirname, "ping-alone")))
     ping_alone = qjump(*args, **kwargs)
 
     print("*** Test for ping + iperf without QJump")
-    kwargs.update(dict(iperf=True, qjump=False))
+    os.mkdir(os.path.join(dirname, "ping-iperf-noqjump"))
+    kwargs.update(dict(iperf=True, qjump=False, dir=os.path.join(dirname, "ping-iperf-noqjump")))
     ping_noQjump = qjump(*args, **kwargs)
 
     print("*** Test for ping + iperf with QJump")
-    kwargs.update(dict(iperf=True, qjump=True))
+    os.mkdir(os.path.join(dirname, "ping-iperf-qjump"))
+    kwargs.update(dict(iperf=True, qjump=True, dir=os.path.join(dirname, "ping-iperf-qjump")))
     ping_Qjump = qjump(*args, **kwargs)
     if ping_Qjump.count(None) > 0:
         logger.warning("Ignoring %d dropped ping packets in QJump run", ping_Qjump.count(None))
     ping_Qjump = filter(lambda x: x is not None, ping_Qjump)
     plotter = Plotter(ping_alone, ping_noQjump, ping_Qjump)
-    plotter.plotCDFs(dir=kwargs.get("dir", "."), figname="pingCDFs")
+    plotter.plotCDFs(dir=dirname, figname="pingCDFs")
 
 def qjump_once(*args, **kwargs):
     dirname = make_results_dir(kwargs.get("dir", DEFAULT_RESULTS_DIR))
     kwargs["dir"] = dirname
+    update_qjump_args(kwargs)
     log_arguments(*args, **kwargs)
     qjump(*args, **kwargs)
 
 def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, \
-        cong="cubic", iperf=True, qjump=True, tc_child=False, qjump_module_args=DEFAULT_QJUMP_MODULE_ARGS, \
-        qjump_env_args=DEFAULT_QJUMP_ENV_ARGS, ping_interval=0.01):
+        cong="cubic", iperf=True, qjump=True, tc_child=False, qjump_module_args=dict(), \
+        qjump_env_args=dict(), ping_interval=0.01):
+
     try:
         subprocess.check_call(["sysctl", "-w", "net.ipv4.tcp_congestion_control=%s" % cong])
     except subprocess.CalledProcessError as e:
@@ -131,9 +152,19 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
 
         print("Done.")
 
-        print sorted(pingm.get_times())
+        resultsfile = open(os.path.join(dir, "results.txt"), "w")
+        resultsfile.write("Ping results:\n")
+        resultsfile.write(", ".join(map(str, pingm.get_times())))
+        resultsfile.write("\nPing results, sorted:\n")
+        resultsfile.write(", ".join(map(str, sorted(pingm.get_times()))))
         if iperf:
-            print iperfm.get_bandwidths()
+            resultsfile.write("\n\nIperf bandwidths:\n")
+            resultsfile.write(", ".join(map(str, iperfm.get_bandwidths())))
+        resultsfile.close()    
+
+        print "ping times:", sorted(pingm.get_times())
+        if iperf:
+            print "iperf bandwidths:", iperfm.get_bandwidths()
 
     except Exception as e:
         print("Error: " + str(e))
@@ -160,41 +191,24 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Qjump arguments")
-    parser.add_argument('--bw-link', '-B',
-                        type=str,
-                        help="Bandwidth of host links (Mb/s)",
-                        default="10")
-    parser.add_argument('--dir', '-d',
-                        help="Directory to store outputs",
-                        default=None)
-    parser.add_argument('--time', '-t',
-                        help="Duration (sec) to run the experiment",
-                        type=int,
-                        default=10)
-    parser.add_argument('--cong',
-                        help="Congestion control algorithm to use",
-                        default="cubic") # Linux uses CUBIC-TCP by default
-    parser.add_argument('--no-qjump', dest="qjump",
-                        help="Don't use QJump",
-                        action="store_false",
-                        default=True)
-    parser.add_argument('--no-iperf', dest="iperf",
-                        help="Don't use Iperf",
-                        action="store_false",
-                        default=True)
-    parser.add_argument('--verbosity', '-v',
-                        help="Logging level",
-                        default="info")
-    parser.add_argument('--runall',
+    parser.add_argument('--bw-link', '-B', type=str, help="Bandwidth of host links (Mb/s)", default="10")
+    parser.add_argument('--dir', '-d', help="Directory to store outputs", default=None)
+    parser.add_argument('--time', '-t', help="Duration (sec) to run the experiment", type=int, default=10)
+    parser.add_argument('--cong', help="Congestion control algorithm to use", default="cubic") # Linux uses CUBIC-TCP by default
+    parser.add_argument('--no-qjump', dest="qjump", help="Don't use QJump", action="store_false", default=True)
+    parser.add_argument('--no-iperf', dest="iperf", help="Don't use Iperf", action="store_false", default=True)
+    parser.add_argument('--verbosity', '-v', help="Logging level", default="info")
+    parser.add_argument('--topo', choices=("simple", "dc"), type=str, help="Topology to use", default="simple")
+    parser.add_argument("--ping-interval", type=float, help="Ping interval", default=0.01)
+    parser.add_argument("--bytesq", "-b", type=int, help="QJump's bytesq option", default=None)
+    parser.add_argument("--timeq", type=int, help="Qjump's timeq option", default=None)
+    parser.add_argument("--priority", dest="ping_priority", type=int, help="Priority level for ping", default=None)
+    parser.add_argument("--qjump-window", "--qjw", type=int, help="QJump environment's window for ping", default=None)
+    parser.add_argument("--all-priorities", action="store_true", help="Loop through all priorities", default=False)
+    parser.add_argument('--runall', '--all',
                         help="Run ping alone, with iperf no qjump, with qjump",
                         action="store_true",
                         default=False)
-    parser.add_argument('--topo', choices=("simple", "dc"),
-                        type=str, help="Topology to use",
-                        default="simple")
-    parser.add_argument("--ping-interval",
-                        type=float, help="Ping interval",
-                        default=0.01)
     args = parser.parse_args()
     mininet.log.lg.setLogLevel(args.verbosity)
 
@@ -206,7 +220,18 @@ if __name__ == "__main__":
     else:
         bw_link = float(args.bw_link)
 
-    kwargs = dict(dir=args.dir, expttime=args.time, cong=args.cong, tc_child=(bw_link is not None), ping_interval=args.ping_interval)
+    qjump_module_args = dict()
+    qjump_env_args = dict()
+    if args.bytesq is not None:
+        qjump_module_args["bytesq"] = args.bytesq
+    if args.timeq is not None:
+        qjump_module_args["timeq"] = args.timeq
+    if args.ping_priority is not None:
+        qjump_env_args["priority"] = args.ping_priority
+    if args.qjump_window is not None:
+        qjump_env_args["window"] = args.qjump_window
+    kwargs = dict(dir=args.dir, expttime=args.time, cong=args.cong, tc_child=(bw_link is not None), ping_interval=args.ping_interval,
+            qjump_module_args=qjump_module_args, qjump_env_args=qjump_env_args)
 
     if args.topo == "simple":
         from topos import SimpleTopo
@@ -219,6 +244,12 @@ if __name__ == "__main__":
 
     if args.runall:
         qjump_all(topo, **kwargs)
+    elif args.all_priorities:
+        dirname = make_results_dir(kwargs.get("dir", DEFAULT_RESULTS_DIR))
+        for priority in range(8):
+            qjump_env_args["priority"] = priority
+            kwargs["dir"] = os.path.join(dirname, "p%d" % priority)
+            qjump_all(topo, **kwargs)
     else:
         qjump_once(topo, iperf=args.iperf, qjump=args.qjump, **kwargs)
 

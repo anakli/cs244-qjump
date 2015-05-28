@@ -11,14 +11,15 @@ class PingManager(object):
         self.logfilename = os.path.join(dir, filename) if dir else filename
 
     def start(self, env=None, interval=0.01):
-        logfile = open(self.logfilename, "w")
+        self.logfile = open(self.logfilename, "w")
         args = ["ping", self.dst.IP(), "-i", str(interval)]
         logging.info("Starting ping stream from %s to %s at interval %s seconds" % (self.src, self.dst, interval))
-        self.proc = self.src.popen(args, stdout=logfile, env=env, stderr=logfile)
+        self.proc = self.src.popen(args, stdout=self.logfile, env=env, stderr=self.logfile)
         return self.proc
 
     def stop(self):
         self.proc.terminate()
+        self.logfile.close()
 
     def get_times(self, logfilename=None):
         """Returns a list of times. Where no return packet was received,
@@ -35,4 +36,5 @@ class PingManager(object):
             time = float(m.group(3))
             times.extend([None] * (icmp_seq - len(times) - 1))
             times.append(time)
+        logfile.close()
         return times
