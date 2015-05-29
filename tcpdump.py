@@ -1,7 +1,7 @@
 import logging
 import os
 from mininet.link import Intf
-logging = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 from util import kill_safe
 
 class TcpdumpManager(object):
@@ -10,6 +10,7 @@ class TcpdumpManager(object):
         self.net = net
         self.raw = raw
         self.tcpdumpdir = os.path.join(dir, tcpdumpdir) if dir else tcpdumpdir
+        os.makedirs(self.tcpdumpdir)
 
     def _resolve_interface_arg(self, arg):
         """Returns tuple: (Node object, intfname, filename)"""
@@ -20,24 +21,23 @@ class TcpdumpManager(object):
             return self.net.get(nodename), intfname, nodename + "-"  + intfname
         if isinstance(arg, str):
             return self.net.get(arg.split("-")[0]), arg, arg
+        raise TypeError(arg)
 
     def start(self, interfaces):
-        if not isinstance(interfaces, list):
-            interfaces = [interfaces]
         self.procs = []
         self.files = []
 
         for interface in interfaces:
-            node, intfname, filename = _resolve_interface_arg(interface)
+            node, intfname, filename = self._resolve_interface_arg(interface)
 
             # start logging
-            logger.debug("Starting tcpdump on node %s, interface %s..." % (node, intf))
-            filename = os.path.join(tcpdumpdir, filename + (".pcap" if self.raw else ".txt"))
+            logger.debug("Starting tcpdump on node %s, interface %s..." % (node.name, intfname))
+            filename = os.path.join(self.tcpdumpdir, filename + (".pcap" if self.raw else ".txt"))
             dumpfile = open(filename, "w")
-            args = ["tcpdump", "-i", intf]
+            args = ["tcpdump", "-i", intfname]
             if self.raw:
                 args.extend(["-w", "-"])
-            proc = self.net.get(node).popen(args, stdout=dumpfile)
+            proc = node.popen(args, stdout=dumpfile)
 
             # take note of process and file handles
             self.procs.append(proc)
@@ -46,11 +46,12 @@ class TcpdumpManager(object):
         return self.procs
 
     def start_all(self):
-        def all_intfs(self):
+        def all_intfs():
             for node in self.net.values():
                 for intf in node.intfList():
+                    if intf.name == "lo": continue
                     yield intf
-        self.start(all_intfs)
+        self.start(all_intfs())
 
     def stop(self):
         for proc in self.procs:

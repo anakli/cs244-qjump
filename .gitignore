@@ -1,2 +1,5 @@
 *.pyc
 results
+last
+qjump-app-util.so
+sch_qjump.ko
