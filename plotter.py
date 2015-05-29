@@ -11,7 +11,6 @@ from matplotlib import pylab
 class Plotter(object):
 
     def plotCDFs(self, app_alone=None, app_noQjump=None, app_Qjump=None, dir=None, figname="pingCDFfig"):
-        figname = os.path.join(dir, figname) if dir else figname
         logging.info("Plotting CDF...")
         
         plt.clf()        
@@ -29,6 +28,7 @@ class Plotter(object):
            self.plotCDF(app_Qjump, 'g', 'dotted', dir, figname, "ping+iperf w/ QJump")
 
     def plotCDF(self, values, color='b', style='solid', dir=None, figname="pingCDFfig", label=""):
+        figname = os.path.join(dir, figname) if dir else figname
         min_val = np.min(values)
         max_val = np.max(values)
         bin_width = 1
