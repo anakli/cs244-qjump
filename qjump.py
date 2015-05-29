@@ -78,6 +78,22 @@ def print_stats(data, label):
             avg=sum(data)/len(data) if len(data) > 0 else 0.0
     ))
 
+def is_8021q_installed():
+    exitcode = subprocess.call("lsmod | grep 8021q", shell=True, stdout=subprocess.PIPE)
+    return exitcode == 0
+
+def install_8021q():
+    if is_8021q_installed():
+        logger.debug("802.1Q kernel module is already installed")
+        return
+    try:
+        subprocess.check_call(["modprobe", "8021q"])
+    except subprocess.CalledProcessError as e:
+        logger.error("Error installing 802.1Q kernel module: " + str(e))
+        return False
+    logger.info("Installed the 802.1Q kernel module")
+    return True
+
 def qjump_all(*args, **kwargs):
     """Runs all three tests for Figure 3a. Replaces 'iperf' and 'qjump'
     arguments with its own."""
@@ -127,6 +143,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
         logger.error("Error setting TCP congestion control algorithm: " + str(e))
 
     try:
+        install_8021q()
         vlanhost = partial(VLANHost, vlan=2)
         net = Mininet(topo=topo, link=TCLink, host=vlanhost)
         net.start()
@@ -140,7 +157,6 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
 
         if qjump:
             qjumpm = QJumpManager(dir=dir)
-            #qjumpm.install_8021q()
             #qjumpm.config_8021q(net)
             qjumpm.install_module(**qjump_module_args)
             qjumpm.install_qjump(net, tc_child)

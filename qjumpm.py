@@ -10,7 +10,6 @@ class QJumpManager(object):
     DEFAULT_MODULE_CONFIG = {
         "verbose": 5,
     }
-    VLAN_ID = "2"
 
     def __init__(self, dir="."):
         self.dir = dir
@@ -38,33 +37,16 @@ class QJumpManager(object):
             return False
         logger.info("Removing qjump module")
         return True
-        
+
     def is_module_installed(self):
         exitcode = subprocess.call("lsmod | grep sch_qjump", shell=True, stdout=subprocess.PIPE)
         return exitcode == 0
-    
-    def is_8021q_installed(self):
-        exitcode = subprocess.call("lsmod | grep 8021q", shell=True, stdout=subprocess.PIPE)
-        return exitcode == 0
-
-    def install_8021q(self):
-        if self.is_8021q_installed():
-            logger.debug("802.1Q kernel module is already installed")
-            return
-        try:
-            subprocess.check_call(["modprobe", "8021q"])
-        except subprocess.CalledProcessError as e:
-            logger.error("Error installing 802.1Q kernel module: " + str(e))
-            return False
-        logger.info("Installed the 802.1Q kernel module")
-        return True
 
     def _config_8021q(self, node, ifname):
         try:
-            check_pexec(node, ["vconfig", "add", ifname, self.VLAN_ID])
             for i in range(8):
-                check_pexec(node, ["vconfig", "set_egress_map", ifname + "." + self.VLAN_ID, str(i), str(i)])
-                check_pexec(node, ["vconfig", "set_ingress_map", ifname + "." + self.VLAN_ID, str(i), str(i)])
+                check_pexec(node, ["vconfig", "set_egress_map", ifname, str(i), str(i)])
+                check_pexec(node, ["vconfig", "set_ingress_map", ifname, str(i), str(i)])
         except subprocess.CalledProcessError as e:
             logger.error("Error configuring 802.1Q kernel module: " + str(e))
             return False
@@ -85,13 +67,13 @@ class QJumpManager(object):
             raise RuntimeError("Could not configure 802.1Q")
 
     def _log_vlan(self, host, ifname, vlandir):
-        out, err, exitcode = host.pexec(["cat", "/proc/net/vlan/%s.%s" % (ifname, self.VLAN_ID)])
+        out, err, exitcode = host.pexec(["cat", "/proc/net/vlan/%s" % (ifname)])
         logfile = open(os.path.join(vlandir, host.name + "-" + ifname + "-vlan.txt"), "w")
         logfile.write(out)
         logfile.write(err)
         logfile.write("exit code: %d" % exitcode)
         logfile.close()
-    
+
     def log_vlan(self, net):
         vlandir = os.path.join(self.dir, "vlan")
         os.makedirs(vlandir)
@@ -110,7 +92,7 @@ class QJumpManager(object):
         new_env["QJAU_WINDOW"] = str(window)
         new_env["LD_PRELOAD"] = "./qjump-app-util.so"
         return new_env
-        
+
     def _install_qjump(self, node, ifname, tc_child):
         """Installs qjump on a particular node and interface."""
         try:
