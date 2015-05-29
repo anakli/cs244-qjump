@@ -1,18 +1,55 @@
-# cs244-qjump
-Reproducing results from QJUMP paper [NSDI'15] using Mininet.
+Reproducing results from the NSDI ’15 QJump paper
+================================================
+*Ana Klimovic and Chuan-Zheng Lee*<br/>
+*CS 244 (Advanced Topics in Networking), Stanford University*
 
-Installation instructions:
+This repository contains code used in a CS 244 class project to reproduce the
+results of Matthew P. Grosvenor *et al.* in "[Queues Don’t Matter When You Can
+JUMP Them!](https://www.usenix.org/conference/nsdi15/technical-sessions/presentation/grosvenor)", presented at the 12th USENIX Symposium on
+Networked Systems Design and Implementation (NSDI ’15).
 
-Prerequisites:
+Installation
+------------
+1. Start an Amazon EC2 instance from the **CS244-Spr15-Mininet** (ami-cba48cfb)
+   Amazon machine image. (It's listed under Community AMIs. You must be on the
+   US West (Oregon) region to find this.) We used a c3.xlarge instance. Log into
+   the instance.
 
-1) Setup Mininet VM. We recommend using the [cs244-spr-15-mininet--WHAT WAS THE NAME????] image on EC2. For more details, see: http://web.stanford.edu/class/cs244/ec2setup.html
+   (For more details, see the [CS 244 page on EC2 setup](http://web.stanford.edu/class/cs244/ec2setup.html).
 
-2) git clone: 
-    -cs244-qjump
-    -qjump repo
+2. Clone this repository and the [QJump traffic control (TC) module](https://github.com/czlee/qjump-tc):
 
-3) 
-sudo apt-get update
-sudo apt-get install vlan
+        $ git clone https://github.com/anakli/cs244-qjump.git
+        $ git clone https://github.com/czlee/qjump-tc.git
 
-4)   
+   (The QJump TC module is slightly modified from the original: it uses the
+   kernel clock rather than the processor's timestamp counter. A pull request is
+   planned, eventually.)
+
+3. Build the QJump TC module:
+
+        $ cd qjump-tc
+        $ make
+        make -C /lib/modules/3.13.0-48-generic/build M=/home/ubuntu/qjump-tc modules
+        make[1]: Entering directory `/usr/src/linux-headers-3.13.0-48-generic'
+          CC [M]  /home/ubuntu/qjump-tc/sch_qjump.o
+          Building modules, stage 2.
+          MODPOST 1 modules
+          CC      /home/ubuntu/qjump-tc/sch_qjump.mod.o
+          LD [M]  /home/ubuntu/qjump-tc/sch_qjump.ko
+        make[1]: Leaving directory `/usr/src/linux-headers-3.13.0-48-generic'
+
+4. Create a symbolic link to the TC module from the `cs244-qjump` directory (or
+   just copy it over if you prefer):
+
+        $ cd ../cs244-qjump
+        $ ln -s ../qjump-tc/sch_qjump.o sch_qjump.o
+
+5. Install the VLAN configuration program.
+
+        $ sudo apt-get update
+        $ sudo apt-get install vlan
+
+6. Run!
+
+        $ sudo python qjump.py
