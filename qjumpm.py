@@ -68,7 +68,8 @@ class QJumpManager(object):
 
     def _log_vlan(self, host, ifname, vlandir):
         out, err, exitcode = host.pexec(["cat", "/proc/net/vlan/%s" % (ifname)])
-        logfile = open(os.path.join(vlandir, host.name + "-" + ifname + "-vlan.txt"), "w")
+        filename = ifname if ifname.startswith(host.name) else host.name + "-" + ifname
+        logfile = open(os.path.join(vlandir, filename + "-vlan.txt"), "w")
         logfile.write(out)
         logfile.write(err)
         logfile.write("exit code: %d" % exitcode)
