@@ -31,7 +31,7 @@ from functools import partial
 from vlanhost import VLANHost
 
 DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=15, bytesq=1550, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
-DEFAULT_QJUMP_ENV_ARGS = dict(priority=0, window=15500)
+DEFAULT_QJUMP_ENV_ARGS = dict(window=15500)
 DEFAULT_RESULTS_DIR = "."
 
 def log_arguments(topo, **kwargs):
@@ -212,7 +212,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
             qjumpm.log_vlan(net)
 
     except Exception as e:
-        print("Uncaught exception in qjump(): "
+        print("Uncaught exception in qjump(): ")
         print(str(e))
         import traceback
         traceback.print_exc()
