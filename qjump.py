@@ -158,7 +158,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
 
         if qjump:
             qjumpm = QJumpManager(dir=dir)
-            #qjumpm.config_8021q(net)
+            qjumpm.config_8021q(net)
             qjumpm.install_module(**qjump_module_args)
             qjumpm.install_qjump(net, tc_child)
             hpenv = qjumpm.create_env(priority=ping_priority, **qjump_env_args)
