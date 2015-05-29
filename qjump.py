@@ -103,17 +103,18 @@ def qjump_all(*args, **kwargs):
     update_qjump_args(kwargs)
     log_arguments(*args, **kwargs)
 
-    print("*** Test for ping alone")
+
+    print("*** Test for ping alone ***\n")
     os.mkdir(os.path.join(dirname, "ping-alone"))
     kwargs.update(dict(iperf=False, qjump=False, dir=os.path.join(dirname, "ping-alone")))
     ping_alone = qjump(*args, **kwargs)
 
-    print("*** Test for ping + iperf without QJump")
+    print("\n*** Test for ping + iperf without QJump ***")
     os.mkdir(os.path.join(dirname, "ping-iperf-noqjump"))
     kwargs.update(dict(iperf=True, qjump=False, dir=os.path.join(dirname, "ping-iperf-noqjump")))
     ping_noQjump = qjump(*args, **kwargs)
 
-    print("*** Test for ping + iperf with QJump")
+    print("\n*** Test for ping + iperf with QJump ***\n")
     os.mkdir(os.path.join(dirname, "ping-iperf-qjump"))
     kwargs.update(dict(iperf=True, qjump=True, dir=os.path.join(dirname, "ping-iperf-qjump")))
     ping_Qjump = qjump(*args, **kwargs)
@@ -123,7 +124,7 @@ def qjump_all(*args, **kwargs):
     plotter = Plotter(ping_alone, ping_noQjump, ping_Qjump)
     plotter.plotCDFs(dir=dirname, figname="pingCDFs")
 
-    print("Results all saved to " + dirname)
+    print("\nResults all saved to " + dirname)
 
 def qjump_once(*args, **kwargs):
     dirname = make_results_dir(kwargs.get("dir", DEFAULT_RESULTS_DIR))
