@@ -212,7 +212,8 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
             qjumpm.log_vlan(net)
 
     except Exception as e:
-        print("Error: " + str(e))
+        print("Uncaught exception in qjump(): "
+        print(str(e))
         import traceback
         traceback.print_exc()
 
