@@ -5,21 +5,46 @@ from util import kill_safe
 
 class TcpdumpManager(object):
 
-    def __init__(self, net, raw=False, dir=None, tcpdumpfile="tcpdump_iperf.txt"):
+    def __init__(self, net, raw=False, dir=None, tcpdumpdir="tcpdump"):
         self.net = net
         self.raw = raw
-        self.tcpdumpfile = os.path.join(dir, tcpdumpfile) if dir else tcpdumpfile
+        self.tcpdumpdir = os.path.join(dir, tcpdumpdir) if dir else tcpdumpdir
 
-    def start(self, client):
-        logger.debug("Starting tcpdump on %s..." % client)
-        self.tcplogfile = open(self.tcpdumpfile, "w")
-        args = ["tcpdump"]
-        if self.raw:
-            args.extend(["-w", "-"])
-        self.proc = self.net.get(client).popen(args, stdout=self.tcplogfile)
-        return self.proc
+    def start(self, interfaces):
+        if not isinstance(interfaces, list):
+            interfaces = [interfaces]
+        self.procs = []
+        self.files = []
+
+        for interface in interfaces:
+            # extract host, interface, sensible filename
+            # arguments are either ('h1', 'h1-eth0') or just 'h1-eth0'
+            if isinstance(interface, tuple):
+                host, intf = interface
+                filename = host + "-" + intf
+            else:
+                host = interface.split("-")[0]
+                intf = interface
+                filename = interface
+
+            # start logging
+            logger.debug("Starting tcpdump on host %s, interface %s..." % (host, intf))
+            filename = os.path.join(tcpdumpdir, filename + (".pcap" if self.raw else ".txt"))
+            dumpfile = open(filename, "w")
+            args = ["tcpdump", "-i", intf]
+            if self.raw:
+                args.extend(["-w", "-"])
+            proc = self.net.get(host).popen(args, stdout=dumpfile)
+
+            # take note of process and file handles
+            self.procs.append(proc)
+            self.files.append(dumpfile)
+
+        return self.procs
 
     def stop(self):
-        kill_safe(self.proc)
-        self.tcplogfile.close()
-        self.tcplogfile = None
+        for proc in self.procs:
+            kill_safe(proc)
+        for dumpfile in self.files:
+            dumpfile.close()
+            dumpfile = None
