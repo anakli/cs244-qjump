@@ -110,7 +110,7 @@ def qjump_all(*args, **kwargs):
     kwargs.update(dict(iperf=False, qjump=False, dir=os.path.join(dirname, "ping-alone")))
     ping_alone = qjump(*args, **kwargs)
 
-    print("\n*** Test for ping + iperf without QJump ***")
+    print("\n*** Test for ping + iperf without QJump ***\n")
     os.mkdir(os.path.join(dirname, "ping-iperf-noqjump"))
     kwargs.update(dict(iperf=True, qjump=False, dir=os.path.join(dirname, "ping-iperf-noqjump")))
     ping_noQjump = qjump(*args, **kwargs)
@@ -233,6 +233,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
                 net.stop()
             except Exception as e:
                 print e
+        time.sleep(3)
         if 'qjumpm' in locals():
             qjumpm.remove_module()
 
