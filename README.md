@@ -61,4 +61,4 @@ Installation
 
 7. Run!
 
-        $ sudo python qjump.py
+        $ sudo python qjump.py --all

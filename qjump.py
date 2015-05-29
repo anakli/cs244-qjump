@@ -251,7 +251,7 @@ if __name__ == "__main__":
     parser.add_argument('--no-qjump', dest="qjump", help="Don't use QJump", action="store_false", default=True)
     parser.add_argument('--no-iperf', dest="iperf", help="Don't use Iperf", action="store_false", default=True)
     parser.add_argument('--verbosity', '-v', help="Logging level", default="info")
-    parser.add_argument('--topo', choices=("simple", "dc"), type=str, help="Topology to use", default="simple")
+    parser.add_argument('--topo', choices=("simple", "dc"), type=str, help="Topology to use", default="dc")
     parser.add_argument("--ping-interval", type=float, help="Ping interval", default=0.01)
     parser.add_argument("--bytesq", "-b", type=int, help="QJump's bytesq option", default=None)
     parser.add_argument("--timeq", type=int, help="Qjump's timeq option", default=None)

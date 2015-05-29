@@ -12,23 +12,37 @@ class Plotter(object):
 
     def plotCDFs(self, app_alone=None, app_noQjump=None, app_Qjump=None, dir=None, figname="pingCDFfig"):
         logging.info("Plotting CDF...")
-        
-        plt.clf()        
+        plt.clf()
 
         if app_alone:
            logging.info("Plotting app alone data...")
-           self.plotCDF(app_alone, 'b', 'solid', dir, figname, "ping")
-
-        if app_noQjump:
-           logging.info("Plotting app without Qjump data...")
-           self.plotCDF(app_noQjump, 'r', 'dashed', dir, figname, "ping+iperf w/out QJump")
+           self._plotCDF(app_alone, 'b', 'solid', "ping")
 
         if app_Qjump:
            logging.info("Plotting app with Qjump data...")
-           self.plotCDF(app_Qjump, 'g', 'dotted', dir, figname, "ping+iperf w/ QJump")
+           self._plotCDF(app_Qjump, 'g', 'dotted', "ping+iperf w/ QJump")
 
-    def plotCDF(self, values, color='b', style='solid', dir=None, figname="pingCDFfig", label=""):
+        if app_noQjump:
+           self._finalize(dir, figname + "-detail")
+           logging.info("Plotting app without Qjump data...")
+           self._plotCDF(app_noQjump, 'r', 'dashed', "ping+iperf w/out QJump")
+
+        self._finalize(dir, figname)
+
+    def plotCDF(self, values, color='b', style='solid', label="", dir=None, figname="pingCDFfig"):
+        self._plotCDF(values, color, style, label)
+        self._finalize(dir, figname, legend=False)
+
+    def _finalize(self, dir, figname, legend=True):
         figname = os.path.join(dir, figname) if dir else figname
+        plt.xlabel("Latency in ms")
+        plt.title("Latency CDF")
+        if legend:
+            plt.legend(loc='lower right', handletextpad=0.2, frameon=True,
+                borderaxespad=0.2, handlelength=2.5)
+        plt.savefig("%s.pdf" % figname, format="pdf", bbox_inches='tight')
+
+    def _plotCDF(self, values, color='b', style='solid', label=""):
         min_val = np.min(values)
         max_val = np.max(values)
         bin_width = 1
@@ -41,13 +55,3 @@ class Plotter(object):
                                   linestyle=style, color=color, label=label)
         # discard last datapoint to make plot neater (no bar plot-like drop)
         patches[0].set_xy(patches[0].get_xy()[:-1])
-        #plt.xlim(0, 100)
-        #plt.xticks([0, 1000, 2000, 3000, 4000], ['0', '1', '2', '3', '4'], ha='left')
-        #plt.ylim(0, 1.0)
-        #plt.yticks(np.arange(0, 1.01, 0.2), [str(x) for x in np.arange(0, 1.01, 0.2)])
-        if label:
-            plt.legend(loc='lower right', handletextpad=0.2, frameon=True,
-                borderaxespad=0.2, handlelength=2.5)
-        plt.xlabel("Latency in ms")
-        plt.title("Latency CDF")
-        plt.savefig("%s.pdf" % figname, format="pdf", bbox_inches='tight')
