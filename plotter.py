@@ -55,3 +55,4 @@ class Plotter(object):
                                   linestyle=style, color=color, label=label)
         # discard last datapoint to make plot neater (no bar plot-like drop)
         patches[0].set_xy(patches[0].get_xy()[:-1])
+        plt.ylim(0, 1)
