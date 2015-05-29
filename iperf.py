@@ -32,7 +32,7 @@ class IperfManager(object):
 
         args = ["iperf", "-c", self.server.IP(), "-t", str(time), "-i", "1", "-f", "b"]
         if protocol == "udp":
-            args.extend(["-u", "-l", str(packetlen), "-b", "20m"])
+            args.extend(["-u", "-l", str(packetlen), "-b", "10m"])
         logger.info(" ".join(args))
         self.logfile_client = open(self.logfilename_client, "w")
         client_proc = self.net.get(client).popen(args, stdout=self.logfile_client, env=env)

@@ -41,6 +41,7 @@ class Plotter(object):
             plt.legend(loc='lower right', handletextpad=0.2, frameon=True,
                 borderaxespad=0.2, handlelength=2.5)
         plt.savefig("%s.pdf" % figname, format="pdf", bbox_inches='tight')
+        plt.savefig("%s.png" % figname, format="png", bbox_inches='tight')
 
     def _plotCDF(self, values, color='b', style='solid', label=""):
         min_val = np.min(values)
