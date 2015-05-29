@@ -20,11 +20,11 @@ class IperfManager(object):
         # lazy for now, eventually convert numbers to "16m" etc.
         return str(num)
 
-    def start(self, client, time=10, windowsize="16m", packetlen=1400, protocol="udp"):
+    def start(self, client, time=10, windowsize="16m", packetlen=1400, protocol="udp", env=None):
         logger.info("Starting iperf stream from %s to %s..." % (client, self.server.name))
 
         args = ["iperf", "-s", "-w", self._num2size(windowsize)]
-        self.server_proc = self.server.popen(args)
+        self.server_proc = self.server.popen(args, env=env)
 
         self.logfile = open(self.logfilename, "w")
 
@@ -32,7 +32,7 @@ class IperfManager(object):
         if protocol == "udp":
             args.append("-u")
         logger.info(" ".join(args))
-        client_proc = self.net.get(client).popen(args, stdout=self.logfile)
+        client_proc = self.net.get(client).popen(args, stdout=self.logfile, env=env)
         self.client_procs.append(client_proc)
 
         return self.client_procs

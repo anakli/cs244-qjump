@@ -30,7 +30,7 @@ from plotter import Plotter
 from functools import partial
 from vlanhost import VLANHost
 
-DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=15, bytesq=1550, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
+DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=4800, bytesq=1550, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=300, p6rate=300, p7rate=300)
 DEFAULT_QJUMP_ENV_ARGS = dict(window=15500)
 DEFAULT_RESULTS_DIR = "."
 
@@ -73,6 +73,7 @@ def update_qjump_args(kwargs):
     kwargs["qjump_env_args"] = env_args
 
 def print_stats(data, label):
+    data = filter(lambda x: x is not None, data)
     print("{label}: min {min:.3f}, avg {avg:.3f}, max {max:.3f}".format(
             label=label, min=min(data), max=max(data),
             avg=sum(data)/len(data) if len(data) > 0 else 0.0
@@ -121,8 +122,8 @@ def qjump_all(*args, **kwargs):
     if ping_Qjump.count(None) > 0:
         logger.warning("Ignoring %d dropped ping packets in QJump run", ping_Qjump.count(None))
     ping_Qjump = filter(lambda x: x is not None, ping_Qjump)
-    plotter = Plotter(ping_alone, ping_noQjump, ping_Qjump)
-    plotter.plotCDFs(dir=dirname, figname="pingCDFs")
+    plotter = Plotter()
+    plotter.plotCDFs(ping_alone, ping_noQjump, ping_Qjump, dir=dirname, figname="pingCDFs")
 
     print("\nResults all saved to " + dirname)
 
@@ -131,7 +132,9 @@ def qjump_once(*args, **kwargs):
     kwargs["dir"] = dirname
     update_qjump_args(kwargs)
     log_arguments(*args, **kwargs)
-    qjump(*args, **kwargs)
+    ping_times = qjump(*args, **kwargs)
+    plotter = Plotter()
+    plotter.plotCDF(ping_times, dir=dirname, figname="pingCDF")
     print("Results saved to " + dirname)
 
 def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, \
@@ -170,7 +173,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
 
         if iperf:
             iperfm = IperfManager(net, iperf_dst, dir=dir)
-            iperfm.start(iperf_src, time=expttime)
+            iperfm.start(iperf_src, time=expttime, env=lpenv)
 
         pingm = PingManager(net, ping_src, ping_dst, dir=dir)
         pingm.start(env=hpenv, interval=ping_interval)
