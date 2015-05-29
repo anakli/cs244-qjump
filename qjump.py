@@ -1,6 +1,9 @@
 #!/usr/bin/python
 
-"CS244 Spring 2015 Assignment 3: Reproducing QJump paper results [NSDI'15]"
+"""CS244 Spring 2015 Assignment 3: Reproducing QJump paper results [NSDI'15]
+Chuan-Zheng Lee and Ana Klimovic
+CS 244 Spring 2015, Stanford University
+"""
 
 from mininet.node import CPULimitedHost
 from mininet.link import TCLink
@@ -21,6 +24,7 @@ logger = logging.getLogger(__name__)
 from iperf import IperfManager
 from ping import PingManager
 from qjumpm import QJumpManager
+from tcpdumpm import TcpdumpManager
 from plotter import Plotter
 
 DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=15, bytesq=1550, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
@@ -126,6 +130,10 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
         dumpNodeConnections(net.hosts)
         net.pingAll()
 
+        if tcpdump:
+            tcpdumpm = TcpdumpManager(net, raw=(tcpdump=="raw"), dir=dir)
+            tcpdumpm.start()
+
         if qjump:
             qjumpm = QJumpManager()
             qjumpm.install_8021q()
@@ -138,7 +146,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
 
         if iperf:
             iperfm = IperfManager(net, iperf_dst, dir=dir)
-            iperfm.start(iperf_src, time=expttime, tcpdump=tcpdump)
+            iperfm.start(iperf_src, time=expttime)
 
         pingm = PingManager(net, ping_src, ping_dst, dir=dir)
         pingm.start(env=hpenv, interval=ping_interval)
@@ -171,7 +179,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
         if iperf:
             resultsfile.write("\n\nIperf bandwidths:\n")
             resultsfile.write(", ".join(map(str, iperf_bandwidths)))
-        resultsfile.close()    
+        resultsfile.close()
 
         print_stats(ping_times, "ping times")
         if iperf:
@@ -187,6 +195,8 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
             pingm.stop()
         if 'iperfm' in locals() and iperf:
             iperfm.stop()
+        if 'tcpdumpm' in locals():
+            tcpdumpm.stop()
         if 'net' in locals():
             try:
                 net.stop()
