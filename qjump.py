@@ -65,6 +65,12 @@ def update_qjump_args(kwargs):
     kwargs["qjump_module_args"] = module_args
     kwargs["qjump_env_args"] = env_args
 
+def print_stats(data, label):
+    print("{label}: min {min:.3f}, avg {avg:.3f}, max {max:.3f}".format(
+            label=label, min=min(data), max=max(data),
+            avg=sum(data)/len(data) if len(data) > 0 else 0.0
+    ))
+
 def qjump_all(*args, **kwargs):
     """Runs all three tests for Figure 3a. Replaces 'iperf' and 'qjump'
     arguments with its own."""
@@ -94,16 +100,19 @@ def qjump_all(*args, **kwargs):
     plotter = Plotter(ping_alone, ping_noQjump, ping_Qjump)
     plotter.plotCDFs(dir=dirname, figname="pingCDFs")
 
+    print("Results all saved to " + dirname)
+
 def qjump_once(*args, **kwargs):
     dirname = make_results_dir(kwargs.get("dir", DEFAULT_RESULTS_DIR))
     kwargs["dir"] = dirname
     update_qjump_args(kwargs)
     log_arguments(*args, **kwargs)
     qjump(*args, **kwargs)
+    print("Results saved to " + dirname)
 
 def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, \
         cong="cubic", iperf=True, qjump=True, tc_child=False, qjump_module_args=dict(), \
-        qjump_env_args=dict(), ping_interval=0.01):
+        qjump_env_args=dict(), ping_interval=0.01, tcpdump=False):
 
     try:
         subprocess.check_call(["sysctl", "-w", "net.ipv4.tcp_congestion_control=%s" % cong])
@@ -129,7 +138,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
 
         if iperf:
             iperfm = IperfManager(net, iperf_dst, dir=dir)
-            iperfm.start(iperf_src, time=expttime)
+            iperfm.start(iperf_src, time=expttime, tcpdump=tcpdump)
 
         pingm = PingManager(net, ping_src, ping_dst, dir=dir)
         pingm.start(env=hpenv, interval=ping_interval)
@@ -152,19 +161,21 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
 
         print("Done.")
 
+        ping_times = pingm.get_times()
+        iperf_bandwidths = iperfm.get_bandwidths()
         resultsfile = open(os.path.join(dir, "results.txt"), "w")
         resultsfile.write("Ping results:\n")
-        resultsfile.write(", ".join(map(str, pingm.get_times())))
+        resultsfile.write(", ".join(map(str, ping_times)))
         resultsfile.write("\nPing results, sorted:\n")
-        resultsfile.write(", ".join(map(str, sorted(pingm.get_times()))))
+        resultsfile.write(", ".join(map(str, sorted(ping_times))))
         if iperf:
             resultsfile.write("\n\nIperf bandwidths:\n")
-            resultsfile.write(", ".join(map(str, iperfm.get_bandwidths())))
+            resultsfile.write(", ".join(map(str, iperf_bandwidths)))
         resultsfile.close()    
 
-        print "ping times:", sorted(pingm.get_times())
+        print_stats(ping_times, "ping times")
         if iperf:
-            print "iperf bandwidths:", iperfm.get_bandwidths()
+            print_stats(iperf_bandwidths, "iperf bandwidths")
 
     except Exception as e:
         print("Error: " + str(e))
@@ -205,6 +216,8 @@ if __name__ == "__main__":
     parser.add_argument("--priority", dest="ping_priority", type=int, help="Priority level for ping", default=None)
     parser.add_argument("--qjump-window", "--qjw", type=int, help="QJump environment's window for ping", default=None)
     parser.add_argument("--all-priorities", action="store_true", help="Loop through all priorities", default=False)
+    parser.add_argument("--tcpdump", action="store_const", const=True, dest="tcpdump", help="Run tcpdump")
+    parser.add_argument("--tcpdump-raw", action="store_const", const="raw", dest="tcpdump", help="Run tcpdump to write raw packets")
     parser.add_argument('--runall', '--all',
                         help="Run ping alone, with iperf no qjump, with qjump",
                         action="store_true",
@@ -231,7 +244,7 @@ if __name__ == "__main__":
     if args.qjump_window is not None:
         qjump_env_args["window"] = args.qjump_window
     kwargs = dict(dir=args.dir, expttime=args.time, cong=args.cong, tc_child=(bw_link is not None), ping_interval=args.ping_interval,
-            qjump_module_args=qjump_module_args, qjump_env_args=qjump_env_args)
+            qjump_module_args=qjump_module_args, qjump_env_args=qjump_env_args, tcpdump=args.tcpdump)
 
     if args.topo == "simple":
         from topos import SimpleTopo

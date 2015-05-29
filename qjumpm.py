@@ -81,6 +81,7 @@ class QJumpManager(object):
             logger.info("Configured 802.1Q on all ports: " + ", ".join(ifnames))
         else:
             logger.error("Error configuring 802.1Q")
+            raise RuntimeError("Could not configure 802.1Q")
 
     def create_env(self, verbosity=0, priority=0, window=9999999):
         """Creates an environment variables dict that can be passed to a
