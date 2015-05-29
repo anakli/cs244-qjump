@@ -135,7 +135,8 @@ def qjump_once(*args, **kwargs):
 
 def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, \
         cong="cubic", iperf=True, qjump=True, tc_child=False, qjump_module_args=dict(), \
-        qjump_env_args=dict(), ping_interval=0.01, tcpdump=False):
+        qjump_env_args=dict(), ping_interval=0.01, tcpdump=False, ping_priority=0,
+        iperf_priority=6):
 
     try:
         subprocess.check_call(["sysctl", "-w", "net.ipv4.tcp_congestion_control=%s" % cong])
@@ -160,9 +161,11 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
             #qjumpm.config_8021q(net)
             qjumpm.install_module(**qjump_module_args)
             qjumpm.install_qjump(net, tc_child)
-            hpenv = qjumpm.create_env(**qjump_env_args)
+            hpenv = qjumpm.create_env(priority=ping_priority, **qjump_env_args)
+            lpenv = qjumpm.create_env(priority=iperf_priority, **qjump_env_args)
         else:
             hpenv = None
+            lpenv = None
 
         if iperf:
             iperfm = IperfManager(net, iperf_dst, dir=dir)
@@ -246,7 +249,8 @@ if __name__ == "__main__":
     parser.add_argument("--ping-interval", type=float, help="Ping interval", default=0.01)
     parser.add_argument("--bytesq", "-b", type=int, help="QJump's bytesq option", default=None)
     parser.add_argument("--timeq", type=int, help="Qjump's timeq option", default=None)
-    parser.add_argument("--priority", dest="ping_priority", type=int, help="Priority level for ping", default=None)
+    parser.add_argument("--ping-priority", "-P", type=int, help="Priority level for ping", default=0)
+    parser.add_argument("--iperf-priority", "-I", type=int, help="Priority level for iperf", default=6)
     parser.add_argument("--qjump-window", "--qjw", type=int, help="QJump environment's window for ping", default=None)
     parser.add_argument("--all-priorities", action="store_true", help="Loop through all priorities", default=False)
     parser.add_argument("--tcpdump", action="store_const", const=True, dest="tcpdump", help="Run tcpdump")
@@ -272,12 +276,11 @@ if __name__ == "__main__":
         qjump_module_args["bytesq"] = args.bytesq
     if args.timeq is not None:
         qjump_module_args["timeq"] = args.timeq
-    if args.ping_priority is not None:
-        qjump_env_args["priority"] = args.ping_priority
     if args.qjump_window is not None:
         qjump_env_args["window"] = args.qjump_window
     kwargs = dict(dir=args.dir, expttime=args.time, cong=args.cong, tc_child=(bw_link is not None), ping_interval=args.ping_interval,
-            qjump_module_args=qjump_module_args, qjump_env_args=qjump_env_args, tcpdump=args.tcpdump)
+            qjump_module_args=qjump_module_args, qjump_env_args=qjump_env_args, tcpdump=args.tcpdump,
+            ping_priority=args.ping_priority, iperf_priority=args.iperf_priority)
 
     if args.topo == "simple":
         from topos import SimpleTopo
@@ -292,8 +295,8 @@ if __name__ == "__main__":
         qjump_all(topo, **kwargs)
     elif args.all_priorities:
         dirname = make_results_dir(kwargs.get("dir", DEFAULT_RESULTS_DIR))
-        for priority in range(8):
-            qjump_env_args["priority"] = priority
+        for ping_priority in range(8):
+            kwargs["ping_priority"] = ping_priority
             kwargs["dir"] = os.path.join(dirname, "p%d" % priority)
             qjump_all(topo, **kwargs)
     else:
