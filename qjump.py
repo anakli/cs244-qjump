@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 from iperf import IperfManager
 from ping import PingManager
 from qjumpm import QJumpManager
-from tcpdumpm import TcpdumpManager
+from tcpdump import TcpdumpManager
 from plotter import Plotter
 
 DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=15, bytesq=1550, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
