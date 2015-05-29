@@ -140,7 +140,7 @@ def qjump_once(*args, **kwargs):
 def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, \
         cong="cubic", iperf=True, qjump=True, tc_child=False, qjump_module_args=dict(), \
         qjump_env_args=dict(), ping_interval=0.01, tcpdump=False, ping_priority=0,
-        iperf_priority=6):
+        iperf_priority=6, iperf_protocol="udp"):
 
     try:
         subprocess.check_call(["sysctl", "-w", "net.ipv4.tcp_congestion_control=%s" % cong])
@@ -173,7 +173,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
 
         if iperf:
             iperfm = IperfManager(net, iperf_dst, dir=dir)
-            iperfm.start(iperf_src, time=expttime, env=lpenv)
+            iperfm.start(iperf_src, time=expttime, env=lpenv, protocol=iperf_protocol)
 
         pingm = PingManager(net, ping_src, ping_dst, dir=dir)
         pingm.start(env=hpenv, interval=ping_interval)
@@ -257,6 +257,8 @@ if __name__ == "__main__":
     parser.add_argument("--timeq", type=int, help="Qjump's timeq option", default=None)
     parser.add_argument("--ping-priority", "-P", type=int, help="Priority level for ping", default=0)
     parser.add_argument("--iperf-priority", "-I", type=int, help="Priority level for iperf", default=6)
+    parser.add_argument("--iperf-tcp", "--tcp", action="store_const", const="tcp", dest="iperf_protocol", help="Run iperf using TCP", default="udp")
+    parser.add_argument("--iperf-udp", "--udp", action="store_const", const="udp", dest="iperf_protocol", help="Run iperf using UDP", default="udp")
     parser.add_argument("--qjump-window", "--qjw", type=int, help="QJump environment's window for ping", default=None)
     parser.add_argument("--all-priorities", action="store_true", help="Loop through all priorities", default=False)
     parser.add_argument("--tcpdump", action="store_const", const=True, dest="tcpdump", help="Run tcpdump")
@@ -286,7 +288,7 @@ if __name__ == "__main__":
         qjump_env_args["window"] = args.qjump_window
     kwargs = dict(dir=args.dir, expttime=args.time, cong=args.cong, tc_child=(bw_link is not None), ping_interval=args.ping_interval,
             qjump_module_args=qjump_module_args, qjump_env_args=qjump_env_args, tcpdump=args.tcpdump,
-            ping_priority=args.ping_priority, iperf_priority=args.iperf_priority)
+            ping_priority=args.ping_priority, iperf_priority=args.iperf_priority, iperf_protocol=args.iperf_protocol)
 
     if args.topo == "simple":
         from topos import SimpleTopo
