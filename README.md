@@ -51,7 +51,7 @@ Installation
    `cs244-qjump` directory (or just copy it over if you prefer):
 
         $ cd ../cs244-qjump
-        $ ln -s ../qjump-tc/sch_qjump.o sch_qjump.o
+        $ ln -s ../qjump-tc/sch_qjump.ko sch_qjump.ko
         $ ln -s ../qjump-app-util/qjump-app-util.so qjump-app-util.so
 
 6. Install the VLAN configuration program.
