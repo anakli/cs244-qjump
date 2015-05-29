@@ -132,7 +132,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
 
         if tcpdump:
             tcpdumpm = TcpdumpManager(net, raw=(tcpdump=="raw"), dir=dir)
-            tcpdumpm.start()
+            tcpdumpm.start_all()
 
         if qjump:
             qjumpm = QJumpManager()
