@@ -8,8 +8,12 @@ from util import check_pexec
 class QJumpManager(object):
 
     DEFAULT_MODULE_CONFIG = {
-        "verbose": 4,
+        "verbose": 5,
     }
+    VLAN_ID = "2"
+
+    def __init__(self, dir="."):
+        self.dir = dir
 
     def install_module(self, **kwargs):
         """Installs the qjump module, uninstalling the existing one if it was already installed."""
@@ -56,16 +60,14 @@ class QJumpManager(object):
         return True
 
     def _config_8021q(self, node, ifname):
-        vlanid = "2"
         try:
-            check_pexec(node, ["vconfig", "add", ifname, vlanid])
+            check_pexec(node, ["vconfig", "add", ifname, self.VLAN_ID])
             for i in range(8):
-                check_pexec(node, ["vconfig", "set_egress_map", ifname + "." + vlanid, str(i), str(i)])
-                check_pexec(node, ["vconfig", "set_ingress_map", ifname + "." + vlanid, str(i), str(i)])
+                check_pexec(node, ["vconfig", "set_egress_map", ifname + "." + self.VLAN_ID, str(i), str(i)])
+                check_pexec(node, ["vconfig", "set_ingress_map", ifname + "." + self.VLAN_ID, str(i), str(i)])
         except subprocess.CalledProcessError as e:
             logger.error("Error configuring 802.1Q kernel module: " + str(e))
             return False
-        # subprocess.call(["cat", "/proc/net/vlan/%s.%s" % (ifname, vlanid)])
         return True
 
     def config_8021q(self, net):
@@ -73,8 +75,7 @@ class QJumpManager(object):
         ifnames = []
         for host in net.hosts:
             for ifname in host.intfNames():
-                if ifname == "lo":
-                    continue
+                if ifname == "lo": continue
                 ifnames.append(ifname)
                 results.append(self._config_8021q(host, ifname))
         if all(results):
@@ -82,6 +83,22 @@ class QJumpManager(object):
         else:
             logger.error("Error configuring 802.1Q")
             raise RuntimeError("Could not configure 802.1Q")
+
+    def _log_vlan(self, host, ifname, vlandir):
+        out, err, exitcode = host.pexec(["cat", "/proc/net/vlan/%s.%s" % (ifname, self.VLAN_ID)])
+        logfile = open(os.path.join(vlandir, host.name + "-" + ifname + "-vlan.txt"), "w")
+        logfile.write(out)
+        logfile.write(err)
+        logfile.write("exit code: %d" % exitcode)
+        logfile.close()
+    
+    def log_vlan(self, net):
+        vlandir = os.path.join(self.dir, "vlan")
+        os.makedirs(vlandir)
+        for host in net.hosts:
+            for ifname in host.intfNames():
+                if ifname == "lo": continue
+                self._log_vlan(host, ifname, vlandir)
 
     def create_env(self, verbosity=0, priority=0, window=9999999):
         """Creates an environment variables dict that can be passed to a

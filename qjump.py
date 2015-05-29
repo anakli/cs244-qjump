@@ -135,7 +135,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
             tcpdumpm.start_all()
 
         if qjump:
-            qjumpm = QJumpManager()
+            qjumpm = QJumpManager(dir=dir)
             qjumpm.install_8021q()
             qjumpm.config_8021q(net)
             qjumpm.install_module(**qjump_module_args)
@@ -170,20 +170,23 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
         print("Done.")
 
         ping_times = pingm.get_times()
-        iperf_bandwidths = iperfm.get_bandwidths()
         resultsfile = open(os.path.join(dir, "results.txt"), "w")
         resultsfile.write("Ping results:\n")
         resultsfile.write(", ".join(map(str, ping_times)))
         resultsfile.write("\nPing results, sorted:\n")
         resultsfile.write(", ".join(map(str, sorted(ping_times))))
+        print_stats(ping_times, "ping times")
+
         if iperf:
+            iperf_bandwidths = iperfm.get_bandwidths()
             resultsfile.write("\n\nIperf bandwidths:\n")
             resultsfile.write(", ".join(map(str, iperf_bandwidths)))
+            print_stats(iperf_bandwidths, "iperf bandwidths")
+
         resultsfile.close()
 
-        print_stats(ping_times, "ping times")
-        if iperf:
-            print_stats(iperf_bandwidths, "iperf bandwidths")
+        if qjump:
+            qjumpm.log_vlan(net)
 
     except Exception as e:
         print("Error: " + str(e))
