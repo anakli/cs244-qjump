@@ -17,10 +17,11 @@ Installation
 
    (For more details, see the [CS 244 page on EC2 setup](http://web.stanford.edu/class/cs244/ec2setup.html).
 
-2. Clone this repository and the [QJump traffic control (TC) module](https://github.com/czlee/qjump-tc):
+2. Clone this repository, the [QJump traffic control (TC) module](https://github.com/czlee/qjump-tc) and the [QJump Application Utility](https://github.com/camsas/qjump-app-util):
 
         $ git clone https://github.com/anakli/cs244-qjump.git
         $ git clone https://github.com/czlee/qjump-tc.git
+        $ git clone https://github.com/camsas/qjump-app-util.git
 
    (The QJump TC module is slightly modified from the original: it uses the
    kernel clock rather than the processor's timestamp counter. A pull request is
@@ -39,17 +40,25 @@ Installation
           LD [M]  /home/ubuntu/qjump-tc/sch_qjump.ko
         make[1]: Leaving directory `/usr/src/linux-headers-3.13.0-48-generic'
 
-4. Create a symbolic link to the TC module from the `cs244-qjump` directory (or
-   just copy it over if you prefer):
+4. Build the QJump application utility:
+
+        $ cd ../qjump-app-util
+        $ make
+        rm -f qjump-app-util.so*
+        gcc -O3 -fPIC -shared -Werror -Wall -o qjump-app-util.so  qjump-app-util.c -ldl
+
+5. Create symbolic links to the TC module and application utility from the
+   `cs244-qjump` directory (or just copy it over if you prefer):
 
         $ cd ../cs244-qjump
         $ ln -s ../qjump-tc/sch_qjump.o sch_qjump.o
+        $ ln -s ../qjump-app-util/qjump-app-util.so qjump-app-util.so
 
-5. Install the VLAN configuration program.
+6. Install the VLAN configuration program.
 
         $ sudo apt-get update
         $ sudo apt-get install vlan
 
-6. Run!
+7. Run!
 
         $ sudo python qjump.py
