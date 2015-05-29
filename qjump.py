@@ -27,6 +27,9 @@ from qjumpm import QJumpManager
 from tcpdump import TcpdumpManager
 from plotter import Plotter
 
+from functools import partial
+from vlanhost import VLANHost
+
 DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=15, bytesq=1550, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=0, p6rate=0, p7rate=300)
 DEFAULT_QJUMP_ENV_ARGS = dict(priority=0, window=15500)
 DEFAULT_RESULTS_DIR = "."
@@ -124,7 +127,8 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
         logger.error("Error setting TCP congestion control algorithm: " + str(e))
 
     try:
-        net = Mininet(topo=topo, link=TCLink)
+        vlanhost = partial(VLANHost, vlan=2)
+        net = Mininet(topo=topo, link=TCLink, host=vlanhost)
         net.start()
 
         dumpNodeConnections(net.hosts)
@@ -136,8 +140,8 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
 
         if qjump:
             qjumpm = QJumpManager(dir=dir)
-            qjumpm.install_8021q()
-            qjumpm.config_8021q(net)
+            #qjumpm.install_8021q()
+            #qjumpm.config_8021q(net)
             qjumpm.install_module(**qjump_module_args)
             qjumpm.install_qjump(net, tc_child)
             hpenv = qjumpm.create_env(**qjump_env_args)

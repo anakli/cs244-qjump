@@ -128,7 +128,8 @@ class QJumpManager(object):
         results = []
         ifnames = []
         for node in net.hosts:
-            for ifname in node.intfNames():
+            intfnames = set(i.split(".")[0] for i in node.intfNames())
+            for ifname in intfnames:
                 if ifname == "lo":
                     continue
                 ifnames.append(ifname)
