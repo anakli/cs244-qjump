@@ -106,6 +106,12 @@ def install_8021q():
 def clean_up():
     subprocess.check_call(["mn", "-c"], stdout=subprocess.PIPE)
 
+def filter_out_dropped_pings(values, desc):
+    drops = valus.count(None)
+    if drops > 0:
+        logger.warning("Ignoring %d ping packets in run %s" % (drops, desc))
+    return filter(lambda x: x is not None, values)
+
 def qjump_all(*args, **kwargs):
     """Runs all three tests for Figure 3a. Replaces 'iperf' and 'qjump'
     arguments with its own."""
@@ -121,6 +127,7 @@ def qjump_all(*args, **kwargs):
     os.mkdir(os.path.join(dirname, "ping-alone"))
     kwargs.update(dict(iperf=False, qjump=False, dir=os.path.join(dirname, "ping-alone")))
     ping_alone = qjump(*args, **kwargs)
+    ping_alone = filter_out_dropped_pings(ping_alone, "with ping alone")
 
     clean_up()
 
@@ -128,6 +135,7 @@ def qjump_all(*args, **kwargs):
     os.mkdir(os.path.join(dirname, "ping-iperf-noqjump"))
     kwargs.update(dict(iperf=True, qjump=False, dir=os.path.join(dirname, "ping-iperf-noqjump")))
     ping_noQjump = qjump(*args, **kwargs)
+    ping_noQjump = filter_out_dropped_pings(ping_noQjump, "with ping and iperf, without QJump")
 
     clean_up()
 
@@ -135,9 +143,8 @@ def qjump_all(*args, **kwargs):
     os.mkdir(os.path.join(dirname, "ping-iperf-qjump"))
     kwargs.update(dict(iperf=True, qjump=True, dir=os.path.join(dirname, "ping-iperf-qjump")))
     ping_Qjump = qjump(*args, **kwargs)
-    if ping_Qjump.count(None) > 0:
-        logger.warning("Ignoring %d dropped ping packets in QJump run", ping_Qjump.count(None))
-    ping_Qjump = filter(lambda x: x is not None, ping_Qjump)
+    ping_Qjump = filter_out_dropped_pings(ping_Qjump, "with ping and iperf, without QJump")
+
     plotter = Plotter()
     plotter.plotCDFs(ping_alone, ping_noQjump, ping_Qjump, dir=dirname, figname="pingCDFs")
 
@@ -196,7 +203,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
 
         if iperf:
             iperfm = IperfManager(net, iperf_dst, dir=dir)
-            iperfm.start(iperf_src, time=expttime, env=lpenv, protocol=iperf_protocol, bw=bw)
+            iperfm.start(iperf_src, time=expttime+10, env=lpenv, protocol=iperf_protocol, bw=bw) # +10 to avoid race condition
 
         if ping:
             pingm = PingManager(net, ping_src, ping_dst, dir=dir)
@@ -213,9 +220,11 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
                 last_report = secs_remaining
             if iperf:
                 if not iperfm.server_is_alive():
+                    print("There were %d seconds remaining." % secs_remaining)
                     raise RuntimeError("Iperf server is dead!")
                 clients_alive = iperfm.clients_are_alive()
                 if not all(clients_alive):
+                    print("There were %d seconds remaining." % secs_remaining)
                     raise RuntimeError("%d iperf client(s) are dead!" % clients_alive.count(False))
 
         print 
