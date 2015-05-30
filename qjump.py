@@ -104,7 +104,7 @@ def install_8021q():
     return True
 
 def clean_up():
-    subprocess.check_call(["mn", "-c"], stdout=subprocess.PIPE)
+    subprocess.check_call(["mn", "-c"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 def filter_out_dropped_pings(values, desc):
     drops = values.count(None)
