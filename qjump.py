@@ -6,8 +6,14 @@ CS 244 Spring 2015, Stanford University
 """
 
 import sys
-sys.path.insert(0, "../mininet_qjump")
 import os
+if os.path.exists("../mininet_qjump"):
+    sys.path.insert(0, "../mininet_qjump")
+else:
+    print("WARNING: This script will use the standard mininet library,")
+    print("WARNING: so it will probably not work. Please clone the git")
+    print("WARNING: repository at github.com/czlee/mininet.git into the")
+    print("WARNING: a directory at ../mininet_qjump.")
 from mininet.node import CPULimitedHost
 from mininet.link import TCLink
 from mininet.net import Mininet
