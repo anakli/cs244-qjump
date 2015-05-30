@@ -38,7 +38,7 @@ from plotter import Plotter
 from functools import partial
 from vlanhost import VLANHost
 
-DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=28800, bytesq=1550, p0rate=1, p1rate=5, p3rate=30, p4rate=300, p5rate=0, p6rate=0, p7rate=300)
+DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=28800, bytesq=1550, p0rate=1, p1rate=1, p3rate=30, p4rate=150, p5rate=0, p6rate=0, p7rate=300)
 DEFAULT_QJUMP_ENV_ARGS = dict(window=15500)
 DEFAULT_RESULTS_DIR = "."
 
@@ -281,15 +281,15 @@ if __name__ == "__main__":
     parser.add_argument('--no-ping', dest="ping", help="Don't use ping", action="store_false", default=True)
     parser.add_argument('--verbosity', '-v', help="Logging level", default="info")
     parser.add_argument('--topology', choices=("simple", "dc"), type=str, help="Topology to use", default="dc")
-    parser.add_argument('--ping_src', type=str, help="host initiating ping", default="h8")
-    parser.add_argument('--ping_dst', type=str, help="host receiving pings", default="h10")
-    parser.add_argument('--iperf_src', type=str, help="iperf client host", default="h7")
-    parser.add_argument('--iperf_dst', type=str, help="iperf server host", default="h10")
+    parser.add_argument('--ping-src', type=str, help="host initiating ping", default="h8")
+    parser.add_argument('--ping-dst', type=str, help="host receiving pings", default="h10")
+    parser.add_argument('--iperf-src', type=str, help="iperf client host", default="h8")
+    parser.add_argument('--iperf-dst', type=str, help="iperf server host", default="h10")
     parser.add_argument("--ping-interval", type=float, help="Ping interval", default=0.01)
     parser.add_argument("--bytesq", "-b", type=int, help="QJump's bytesq option", default=None)
     parser.add_argument("--timeq", type=int, help="Qjump's timeq option", default=None)
-    parser.add_argument("--ping-priority", "-P", type=int, help="Priority level for ping", default=0)
-    parser.add_argument("--iperf-priority", "-I", type=int, help="Priority level for iperf", default=6)
+    parser.add_argument("--ping-priority", "-P", type=int, help="Priority level for ping", default=6)
+    parser.add_argument("--iperf-priority", "-I", type=int, help="Priority level for iperf", default=0)
     parser.add_argument("--iperf-protocol", "--protocol", choices=("tcp", "udp"), type=str, help="Run iperf using TCP", default="udp")
     parser.add_argument("-f", "--factor", action="append", type=str, dest="qjump_factor", help="QJump throughput factor, e.g. -f5=300", default=[])
     parser.add_argument("--qjump-window", "--qjw", type=int, help="QJump environment's window for ping", default=None)
