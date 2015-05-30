@@ -46,14 +46,15 @@ class Plotter(object):
     def _plotCDF(self, values, color='b', style='solid', label=""):
         min_val = np.min(values)
         max_val = np.max(values)
-        bin_width = 1
+        bin_width = 0.1
         bin_range = max_val - min_val
         num_bins = min(2500, bin_range / bin_width)
         print "Binning into %d bins and plotting..." % (num_bins) 
         # plot a cumulative histogram line diagram
         (n, bins, patches) = plt.hist(values, log=False, normed=True,
                                   cumulative=True, histtype="step",
-                                  linestyle=style, color=color, label=label)
+                                  linestyle=style, color=color, label=label,
+                                  bins=num_bins)
         # discard last datapoint to make plot neater (no bar plot-like drop)
         patches[0].set_xy(patches[0].get_xy()[:-1])
         plt.ylim(0, 1)
