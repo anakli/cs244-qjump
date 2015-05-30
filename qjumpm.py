@@ -8,7 +8,7 @@ from util import check_pexec
 class QJumpManager(object):
 
     DEFAULT_MODULE_CONFIG = {
-        "verbose": 5,
+        "verbose": 4,
     }
 
     def __init__(self, dir="."):

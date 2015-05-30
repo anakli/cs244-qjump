@@ -21,18 +21,22 @@ class IperfManager(object):
         # lazy for now, eventually convert numbers to "16m" etc.
         return str(num)
 
-    def start(self, client, time=10, windowsize="16m", packetlen=1400, protocol="udp", env=None):
+    def start(self, client, time=10, windowsize=16000000, packetlen=1400, protocol="udp", env=None, bw=None):
         logger.info("Starting iperf stream from %s to %s..." % (client, self.server.name))
 
-        args = ["iperf", "-s", "-w", self._num2size(windowsize), "-i", "1"]
+        common_args = ["-i", "1", "-f", "b"]
+
+        args = ["iperf", "-s", "-w", self._num2size(windowsize)] + common_args
         if protocol == "udp":
             args.extend(["-u", "-l", str(packetlen)])
         self.logfile_server = open(self.logfilename_server, "w")
         self.server_proc = self.server.popen(args, env=env, stdout=self.logfile_server)
 
-        args = ["iperf", "-c", self.server.IP(), "-t", str(time), "-i", "1", "-f", "b"]
+        args = ["iperf", "-c", self.server.IP(), "-t", str(time)] + common_args
         if protocol == "udp":
-            args.extend(["-u", "-l", str(packetlen), "-b", "10m"])
+            if bw is None:
+                raise ValueError("'bw' must be specified when protocol is 'udp'")
+            args.extend(["-u", "-l", str(packetlen), "-b", self._num2size(bw)])
         logger.info(" ".join(args))
         self.logfile_client = open(self.logfilename_client, "w")
         client_proc = self.net.get(client).popen(args, stdout=self.logfile_client, env=env)
@@ -70,7 +74,7 @@ class IperfManager(object):
         None is placed in the list. Assumes that -i=1 was used and requires
         that -f=b was used when calling iperf."""
         if logfilename is None:
-            logfilename = self.logfilename_client
+            logfilename = self.logfilename_server
         logfile = open(logfilename)
         bandwidths = []
         for line in logfile:

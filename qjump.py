@@ -140,7 +140,7 @@ def qjump_once(*args, **kwargs):
 def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, \
         cong="cubic", iperf=True, qjump=True, tc_child=False, qjump_module_args=dict(), \
         qjump_env_args=dict(), ping_interval=0.01, tcpdump=False, ping_priority=0,
-        iperf_priority=6, iperf_protocol="udp"):
+        iperf_priority=6, iperf_protocol="udp", bw=None):
 
     try:
         subprocess.check_call(["sysctl", "-w", "net.ipv4.tcp_congestion_control=%s" % cong])
@@ -173,7 +173,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
 
         if iperf:
             iperfm = IperfManager(net, iperf_dst, dir=dir)
-            iperfm.start(iperf_src, time=expttime, env=lpenv, protocol=iperf_protocol)
+            iperfm.start(iperf_src, time=expttime, env=lpenv, protocol=iperf_protocol, bw=bw)
 
         pingm = PingManager(net, ping_src, ping_dst, dir=dir)
         pingm.start(env=hpenv, interval=ping_interval)
@@ -246,7 +246,7 @@ if __name__ == "__main__":
     parser = ArgumentParser(description="Qjump arguments")
     parser.add_argument('--bw-link', '-B', type=str, help="Bandwidth of host links (Mb/s)", default="10")
     parser.add_argument('--dir', '-d', help="Directory to store outputs", default=None)
-    parser.add_argument('--time', '-t', help="Duration (sec) to run the experiment", type=int, default=10)
+    parser.add_argument('--time', '-t', help="Duration (sec) to run the experiment", type=float, default=10.0)
     parser.add_argument('--cong', help="Congestion control algorithm to use", default="cubic") # Linux uses CUBIC-TCP by default
     parser.add_argument('--no-qjump', dest="qjump", help="Don't use QJump", action="store_false", default=True)
     parser.add_argument('--no-iperf', dest="iperf", help="Don't use Iperf", action="store_false", default=True)
@@ -258,15 +258,14 @@ if __name__ == "__main__":
     parser.add_argument("--ping-priority", "-P", type=int, help="Priority level for ping", default=0)
     parser.add_argument("--iperf-priority", "-I", type=int, help="Priority level for iperf", default=6)
     parser.add_argument("--iperf-tcp", "--tcp", action="store_const", const="tcp", dest="iperf_protocol", help="Run iperf using TCP", default="udp")
-    parser.add_argument("--iperf-udp", "--udp", action="store_const", const="udp", dest="iperf_protocol", help="Run iperf using UDP", default="udp")
+    parser.add_argument("--iperf-udp", "--udp", action="store_const", const="udp", dest="iperf_protocol", help="Run iperf using UDP (default)", default="udp")
+    parser.add_argument("-f", "--factor", action="append", type=str, dest="qjump_factor", help="QJump throughput factor, e.g. -f5=300", default=[])
     parser.add_argument("--qjump-window", "--qjw", type=int, help="QJump environment's window for ping", default=None)
+    parser.add_argument("--qjump-verbosity", type=int, help="QJump TC module verbosity", default=None)
     parser.add_argument("--all-priorities", action="store_true", help="Loop through all priorities", default=False)
     parser.add_argument("--tcpdump", action="store_const", const=True, dest="tcpdump", help="Run tcpdump")
     parser.add_argument("--tcpdump-raw", action="store_const", const="raw", dest="tcpdump", help="Run tcpdump to write raw packets")
-    parser.add_argument('--runall', '--all',
-                        help="Run ping alone, with iperf no qjump, with qjump",
-                        action="store_true",
-                        default=False)
+    parser.add_argument('--runall', '--all', help="Run ping alone, with iperf no qjump, with qjump", action="store_true", default=False)
     args = parser.parse_args()
     mininet.log.lg.setLogLevel(args.verbosity)
 
@@ -284,11 +283,22 @@ if __name__ == "__main__":
         qjump_module_args["bytesq"] = args.bytesq
     if args.timeq is not None:
         qjump_module_args["timeq"] = args.timeq
+    if args.qjump_verbosity is not None:
+        qjump_module_args["verbosity"] = args.qjump_verbosity
+    for setting in args.qjump_factor:
+        try:
+            priority, factor = map(int, setting.split("="))
+            assert priority in range(8)
+        except (ValueError, AssertionError):
+            raise ValueError("Invalid --factor setting: %s" % setting)
+        qjump_module_args["p%drate" % priority] = factor
     if args.qjump_window is not None:
         qjump_env_args["window"] = args.qjump_window
     kwargs = dict(dir=args.dir, expttime=args.time, cong=args.cong, tc_child=(bw_link is not None), ping_interval=args.ping_interval,
             qjump_module_args=qjump_module_args, qjump_env_args=qjump_env_args, tcpdump=args.tcpdump,
             ping_priority=args.ping_priority, iperf_priority=args.iperf_priority, iperf_protocol=args.iperf_protocol)
+    if args.iperf_protocol == "udp":
+        kwargs["bw"] = bw_link * 1e6
 
     if args.topo == "simple":
         from topos import SimpleTopo
