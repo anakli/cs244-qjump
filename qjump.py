@@ -188,7 +188,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
 
         if iperf:
             iperfm = IperfManager(net, iperf_dst, dir=dir)
-            iperfm.start(iperf_src, time=expttime, env=lpenv, protocol=iperf_protocol, bw=bw)
+            iperfm.start(iperf_src, time=expttime+10, env=lpenv, protocol=iperf_protocol, bw=bw) # +10 to avoid race condition
 
         if ping:
             pingm = PingManager(net, ping_src, ping_dst, dir=dir)
