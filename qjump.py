@@ -103,6 +103,12 @@ def install_8021q():
     logger.info("Installed the 802.1Q kernel module")
     return True
 
+def filter_out_dropped_pings(values, desc):
+    drops = valus.count(None)
+    if drops > 0:
+        logger.warning("Ignoring %d ping packets in run %s" % (drops, desc))
+    return filter(lambda x: x is not None, values)
+
 def qjump_all(*args, **kwargs):
     """Runs all three tests for Figure 3a. Replaces 'iperf' and 'qjump'
     arguments with its own."""
@@ -112,24 +118,24 @@ def qjump_all(*args, **kwargs):
     update_qjump_args(kwargs)
     log_arguments(*args, **kwargs)
 
-
     print("*** Test for ping alone ***\n")
     os.mkdir(os.path.join(dirname, "ping-alone"))
     kwargs.update(dict(iperf=False, qjump=False, dir=os.path.join(dirname, "ping-alone")))
     ping_alone = qjump(*args, **kwargs)
+    ping_alone = filter_out_dropped_pings(ping_alone, "with ping alone")
 
     print("\n*** Test for ping + iperf without QJump ***\n")
     os.mkdir(os.path.join(dirname, "ping-iperf-noqjump"))
     kwargs.update(dict(iperf=True, qjump=False, dir=os.path.join(dirname, "ping-iperf-noqjump")))
     ping_noQjump = qjump(*args, **kwargs)
+    ping_noQjump = filter_out_dropped_pings(ping_noQjump, "with ping and iperf, without QJump")
 
     print("\n*** Test for ping + iperf with QJump ***\n")
     os.mkdir(os.path.join(dirname, "ping-iperf-qjump"))
     kwargs.update(dict(iperf=True, qjump=True, dir=os.path.join(dirname, "ping-iperf-qjump")))
     ping_Qjump = qjump(*args, **kwargs)
-    if ping_Qjump.count(None) > 0:
-        logger.warning("Ignoring %d dropped ping packets in QJump run", ping_Qjump.count(None))
-    ping_Qjump = filter(lambda x: x is not None, ping_Qjump)
+    ping_Qjump = filter_out_dropped_pings(ping_Qjump, "with ping and iperf, without QJump")
+
     plotter = Plotter()
     plotter.plotCDFs(ping_alone, ping_noQjump, ping_Qjump, dir=dirname, figname="pingCDFs")
 
