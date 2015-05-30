@@ -133,12 +133,13 @@ def qjump_once(*args, **kwargs):
     update_qjump_args(kwargs)
     log_arguments(*args, **kwargs)
     ping_times = qjump(*args, **kwargs)
-    plotter = Plotter()
-    plotter.plotCDF(ping_times, dir=dirname, figname="pingCDF")
-    print("Results saved to " + dirname)
+    if ping_times:
+        plotter = Plotter()
+        plotter.plotCDF(ping_times, dir=dirname, figname="pingCDF")
+        print("Results saved to " + dirname)
 
 def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, \
-        cong="cubic", iperf=True, qjump=True, tc_child=False, qjump_module_args=dict(), \
+        cong="cubic", iperf=True, ping=True, qjump=True, tc_child=False, qjump_module_args=dict(), \
         qjump_env_args=dict(), ping_interval=0.01, tcpdump=False, ping_priority=0,
         iperf_priority=4, iperf_protocol="udp", bw=None):
 
@@ -175,8 +176,9 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
             iperfm = IperfManager(net, iperf_dst, dir=dir)
             iperfm.start(iperf_src, time=expttime, env=lpenv, protocol=iperf_protocol, bw=bw)
 
-        pingm = PingManager(net, ping_src, ping_dst, dir=dir)
-        pingm.start(env=hpenv, interval=ping_interval)
+        if ping:
+            pingm = PingManager(net, ping_src, ping_dst, dir=dir)
+            pingm.start(env=hpenv, interval=ping_interval)
 
         start = time.time()
         last_report = expttime
@@ -194,15 +196,18 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
                 if not all(clients_alive):
                     raise RuntimeError("%d iperf client(s) are dead!" % clients_alive.count(False))
 
+        print 
         print("Done.")
 
-        ping_times = pingm.get_times()
         resultsfile = open(os.path.join(dir, "results.txt"), "w")
-        resultsfile.write("Ping results:\n")
-        resultsfile.write(", ".join(map(str, ping_times)))
-        resultsfile.write("\nPing results, sorted:\n")
-        resultsfile.write(", ".join(map(str, sorted(ping_times))))
-        print_stats(ping_times, "ping times")
+
+        if ping:
+            ping_times = pingm.get_times()
+            resultsfile.write("Ping results:\n")
+            resultsfile.write(", ".join(map(str, ping_times)))
+            resultsfile.write("\nPing results, sorted:\n")
+            resultsfile.write(", ".join(map(str, sorted(ping_times))))
+            print_stats(ping_times, "ping times")
 
         if iperf:
             iperf_bandwidths = iperfm.get_bandwidths()
@@ -250,6 +255,7 @@ if __name__ == "__main__":
     parser.add_argument('--cong', help="Congestion control algorithm to use", default="cubic") # Linux uses CUBIC-TCP by default
     parser.add_argument('--no-qjump', dest="qjump", help="Don't use QJump", action="store_false", default=True)
     parser.add_argument('--no-iperf', dest="iperf", help="Don't use Iperf", action="store_false", default=True)
+    parser.add_argument('--no-ping', dest="ping", help="Don't use ping", action="store_false", default=True)
     parser.add_argument('--verbosity', '-v', help="Logging level", default="info")
     parser.add_argument('--topology', choices=("simple", "dc"), type=str, help="Topology to use", default="dc")
     parser.add_argument('--ping_src', type=str, help="host initiating ping", default="h8")
@@ -321,6 +327,6 @@ if __name__ == "__main__":
             kwargs["dir"] = os.path.join(dirname, "p%d" % priority)
             qjump_all(topo, **kwargs)
     else:
-        qjump_once(topo, iperf=args.iperf, qjump=args.qjump, **kwargs)
+        qjump_once(topo, iperf=args.iperf, ping=args.ping, qjump=args.qjump, **kwargs)
 
 
