@@ -25,6 +25,7 @@ from iperf import IperfManager
 from ping import PingManager
 from qjumpm import QJumpManager
 from tcpdump import TcpdumpManager
+from kernel_log import KernelLogManager
 from plotter import Plotter
 
 from functools import partial
@@ -140,7 +141,7 @@ def qjump_once(*args, **kwargs):
 def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, \
         cong="cubic", iperf=True, qjump=True, tc_child=False, qjump_module_args=dict(), \
         qjump_env_args=dict(), ping_interval=0.01, tcpdump=False, ping_priority=0,
-        iperf_priority=6, iperf_protocol="udp", bw=None):
+        iperf_priority=6, iperf_protocol="udp", bw=None, kernel_log=False):
 
     try:
         subprocess.check_call(["sysctl", "-w", "net.ipv4.tcp_congestion_control=%s" % cong])
@@ -159,6 +160,10 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
         if tcpdump:
             tcpdumpm = TcpdumpManager(net, raw=(tcpdump=="raw"), dir=dir)
             tcpdumpm.start_all()
+
+        if kernel_log:
+            klogm = KernelLogManager(dir=dir)
+            klogm.start()
 
         if qjump:
             qjumpm = QJumpManager(dir=dir)
@@ -197,6 +202,8 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
         print("Done.")
 
         ping_times = pingm.get_times()
+        if len(ping_times) == 0:
+            raise RuntimeError("There weren't any ping response times!")
         resultsfile = open(os.path.join(dir, "results.txt"), "w")
         resultsfile.write("Ping results:\n")
         resultsfile.write(", ".join(map(str, ping_times)))
@@ -215,6 +222,9 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
         if qjump:
             qjumpm.log_vlan(net)
 
+        if kernel_log:
+            klogm.process(dir)
+
     except Exception as e:
         print("Uncaught exception in qjump(): ")
         print(str(e))
@@ -222,12 +232,16 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
         traceback.print_exc()
 
     finally:
+        if 'resultsfile' in locals():
+            resultsfile.close()
         if 'pingm' in locals():
             pingm.stop()
         if 'iperfm' in locals() and iperf:
             iperfm.stop()
         if 'tcpdumpm' in locals():
             tcpdumpm.stop()
+        if 'klogm' in locals():
+            klogm.stop()
         if 'net' in locals():
             try:
                 net.stop()
@@ -262,8 +276,9 @@ if __name__ == "__main__":
     parser.add_argument("--qjump-window", "--qjw", type=int, help="QJump environment's window for ping", default=None)
     parser.add_argument("--qjump-verbosity", type=int, help="QJump TC module verbosity", default=None)
     parser.add_argument("--all-priorities", action="store_true", help="Loop through all priorities", default=False)
-    parser.add_argument("--tcpdump", action="store_const", const=True, dest="tcpdump", help="Run tcpdump")
-    parser.add_argument("--tcpdump-raw", action="store_const", const="raw", dest="tcpdump", help="Run tcpdump to write raw packets")
+    parser.add_argument("--tcpdump", action="store_const", const=True, dest="tcpdump", help="Run tcpdump", default=False)
+    parser.add_argument("--tcpdump-raw", action="store_const", const="raw", dest="tcpdump", help="Run tcpdump to write raw packets", default=False)
+    parser.add_argument("--kernel-log", action="store_true", help="Take note of kernel logs", default=False)
     parser.add_argument('--runall', '--all', help="Run ping alone, with iperf no qjump, with qjump", action="store_true", default=False)
     args = parser.parse_args()
     mininet.log.lg.setLogLevel(args.verbosity)
@@ -295,7 +310,8 @@ if __name__ == "__main__":
         qjump_env_args["window"] = args.qjump_window
     kwargs = dict(dir=args.dir, expttime=args.time, cong=args.cong, tc_child=(bw_link is not None), ping_interval=args.ping_interval,
             qjump_module_args=qjump_module_args, qjump_env_args=qjump_env_args, tcpdump=args.tcpdump,
-            ping_priority=args.ping_priority, iperf_priority=args.iperf_priority, iperf_protocol=args.iperf_protocol)
+            ping_priority=args.ping_priority, iperf_priority=args.iperf_priority, iperf_protocol=args.iperf_protocol,
+            kernel_log=args.kernel_log)
     if args.iperf_protocol == "udp":
         kwargs["bw"] = bw_link * 1e6
 
