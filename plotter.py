@@ -46,7 +46,7 @@ class Plotter(object):
     def _plotCDF(self, values, color='b', style='solid', label=""):
         min_val = np.min(values)
         max_val = np.max(values)
-        bin_width = 0.1
+        bin_width = 0.001
         bin_range = max_val - min_val
         num_bins = min(2500, bin_range / bin_width)
         print "Binning into %d bins and plotting..." % (num_bins) 
