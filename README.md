@@ -17,15 +17,20 @@ Instructions
 
    (For more details, see the [CS 244 page on EC2 setup](http://web.stanford.edu/class/cs244/ec2setup.html).
 
-2. Clone this repository, the [QJump traffic control (TC) module](https://github.com/czlee/qjump-tc) and the [QJump Application Utility](https://github.com/camsas/qjump-app-util):
+2. Clone this repository, the [QJump traffic control (TC) module](https://github.com/czlee/qjump-tc) and the [QJump Application Utility](https://github.com/camsas/qjump-app-util).
+   Also, clone our [modified version of Mininet](https://github.com/czlee/mininet), but clone it to the directory
+   `mininet_qjump`.
 
         $ git clone https://github.com/anakli/cs244-qjump.git
         $ git clone https://github.com/czlee/qjump-tc.git
         $ git clone https://github.com/camsas/qjump-app-util.git
+        $ git clone https://github.com/czlee/mininet.git mininet_qjump
 
    (The QJump TC module is slightly modified from the original: it uses the
    kernel clock rather than the processor's timestamp counter. A pull request is
-   planned, eventually.)
+   planned, eventually. Mininet was modified to create eight transmit queues
+   on each interface, rather than just one. At the moment it's hard-coded, 
+   but a more configurable pull request is also planned, eventually.)
 
 3. Build the QJump TC module:
 
