@@ -166,7 +166,9 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
             qjumpm.config_8021q(net)
             qjumpm.install_module(**qjump_module_args)
             qjumpm.install_qjump(net, tc_child)
+            print "Setting ping priority to %d" % ping_priority
             hpenv = qjumpm.create_env(priority=ping_priority, **qjump_env_args)
+            print "Setting iperf priority to %d" % iperf_priority
             lpenv = qjumpm.create_env(priority=iperf_priority, **qjump_env_args)
         else:
             hpenv = None
