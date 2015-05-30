@@ -14,7 +14,7 @@ else:
     print("WARNING: so it will probably not work. Please clone the git")
     print("WARNING: repository at github.com/czlee/mininet.git into the")
     print("WARNING: a directory at ../mininet_qjump.")
-from mininet.node import CPULimitedHost
+from mininet.node import CPULimitedHost, OVSHtbQosSwitch
 from mininet.link import TCLink
 from mininet.net import Mininet
 from mininet.util import dumpNodeConnections
@@ -103,6 +103,9 @@ def install_8021q():
     logger.info("Installed the 802.1Q kernel module")
     return True
 
+def clean_up():
+    subprocess.check_call(["mn", "-c"], stdout=subprocess.PIPE)
+
 def qjump_all(*args, **kwargs):
     """Runs all three tests for Figure 3a. Replaces 'iperf' and 'qjump'
     arguments with its own."""
@@ -112,16 +115,21 @@ def qjump_all(*args, **kwargs):
     update_qjump_args(kwargs)
     log_arguments(*args, **kwargs)
 
+    clean_up()
 
     print("*** Test for ping alone ***\n")
     os.mkdir(os.path.join(dirname, "ping-alone"))
     kwargs.update(dict(iperf=False, qjump=False, dir=os.path.join(dirname, "ping-alone")))
     ping_alone = qjump(*args, **kwargs)
 
+    clean_up()
+
     print("\n*** Test for ping + iperf without QJump ***\n")
     os.mkdir(os.path.join(dirname, "ping-iperf-noqjump"))
     kwargs.update(dict(iperf=True, qjump=False, dir=os.path.join(dirname, "ping-iperf-noqjump")))
     ping_noQjump = qjump(*args, **kwargs)
+
+    clean_up()
 
     print("\n*** Test for ping + iperf with QJump ***\n")
     os.mkdir(os.path.join(dirname, "ping-iperf-qjump"))
@@ -159,7 +167,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
     try:
         install_8021q()
         vlanhost = partial(VLANHost, vlan=2)
-        net = Mininet(topo=topo, link=TCLink, host=vlanhost)
+        net = Mininet(topo=topo, link=TCLink, host=vlanhost, switch=OVSHtbQosSwitch)
         net.start()
 
         dumpNodeConnections(net.hosts)
