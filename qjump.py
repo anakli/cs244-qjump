@@ -5,18 +5,19 @@ Chuan-Zheng Lee and Ana Klimovic
 CS 244 Spring 2015, Stanford University
 """
 
+import sys
+sys.path.insert(0, "../mininet_qjump")
+import os
 from mininet.node import CPULimitedHost
 from mininet.link import TCLink
 from mininet.net import Mininet
 from mininet.util import dumpNodeConnections
 import mininet.log
+print "mininet is in " + os.path.dirname(mininet.log.__file__)
 
 import subprocess
 from argparse import ArgumentParser
 
-import sys
-import os
-import os.path
 import time
 import logging
 logger = logging.getLogger(__name__)
