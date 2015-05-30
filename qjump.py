@@ -30,7 +30,7 @@ from plotter import Plotter
 from functools import partial
 from vlanhost import VLANHost
 
-DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=28800, bytesq=1550, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=300, p6rate=300, p7rate=300)
+DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=28800, bytesq=1550, p0rate=1, p1rate=5, p3rate=30, p4rate=300, p5rate=0, p6rate=0, p7rate=300)
 DEFAULT_QJUMP_ENV_ARGS = dict(window=15500)
 DEFAULT_RESULTS_DIR = "."
 
