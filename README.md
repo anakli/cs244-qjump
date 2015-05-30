@@ -8,7 +8,7 @@ results of Matthew P. Grosvenor *et al.* in "[Queues Don’t Matter When You Can
 JUMP Them!](https://www.usenix.org/conference/nsdi15/technical-sessions/presentation/grosvenor)", presented at the 12th USENIX Symposium on
 Networked Systems Design and Implementation (NSDI ’15).
 
-Installation
+Instructions
 ------------
 1. Start an Amazon EC2 instance from the **CS244-Spr15-Mininet** (ami-cba48cfb)
    Amazon machine image. (It's listed under Community AMIs. You must be on the
@@ -62,3 +62,20 @@ Installation
 7. Run!
 
         $ sudo python qjump.py --all
+
+   Results will be stored in a timestamped subdirectory of the `results/` directory. A symlink
+   to the most recent results directory is placed at `last`.
+
+Options
+-------
+The default setting is to run tests for 10 seconds with 10 Mbit/s links using the
+[topology used by Grosvenor *et al.*](http://www.cl.cam.ac.uk/research/srg/netos/qjump/nsdi2015/network.html).
+Some useful options:
+
+- `--time=TIME`, `-t=TIME`: how long to run the experiment
+- `--bw-link=BANDWIDTH`: the bandwidth of various links
+
+To see all options:
+    
+    $ python qjump.py --help
+    
