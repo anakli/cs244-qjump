@@ -205,9 +205,11 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
                 last_report = secs_remaining
             if iperf:
                 if not iperfm.server_is_alive():
+                    print("There were %d seconds remaining." % secs_remaining)
                     raise RuntimeError("Iperf server is dead!")
                 clients_alive = iperfm.clients_are_alive()
                 if not all(clients_alive):
+                    print("There were %d seconds remaining." % secs_remaining)
                     raise RuntimeError("%d iperf client(s) are dead!" % clients_alive.count(False))
 
         print 
