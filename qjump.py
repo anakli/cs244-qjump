@@ -164,7 +164,7 @@ def qjump_once(*args, **kwargs):
 def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, \
         cong="cubic", iperf=True, ping=True, qjump=True, tc_child=False, qjump_module_args=dict(), \
         qjump_env_args=dict(), ping_interval=0.01, tcpdump=False, ping_priority=0,
-        iperf_priority=4, iperf_protocol="udp", bw=None, kernel_log=False):
+        iperf_priority=4, iperf_protocol="tcp", bw=None, kernel_log=False):
 
     try:
         subprocess.check_call(["sysctl", "-w", "net.ipv4.tcp_congestion_control=%s" % cong])
@@ -300,14 +300,14 @@ if __name__ == "__main__":
     parser.add_argument('--topology', choices=("simple", "dc"), type=str, help="Topology to use", default="dc")
     parser.add_argument('--ping-src', type=str, help="host initiating ping", default="h8")
     parser.add_argument('--ping-dst', type=str, help="host receiving pings", default="h10")
-    parser.add_argument('--iperf-src', type=str, help="iperf client host", default="h8")
+    parser.add_argument('--iperf-src', type=str, help="iperf client host", default="h7")
     parser.add_argument('--iperf-dst', type=str, help="iperf server host", default="h10")
     parser.add_argument("--ping-interval", type=float, help="Ping interval", default=0.01)
     parser.add_argument("--bytesq", "-b", type=int, help="QJump's bytesq option", default=None)
     parser.add_argument("--timeq", type=int, help="Qjump's timeq option", default=None)
     parser.add_argument("--ping-priority", "-P", type=int, help="Priority level for ping", default=6)
     parser.add_argument("--iperf-priority", "-I", type=int, help="Priority level for iperf", default=0)
-    parser.add_argument("--iperf-protocol", "--protocol", choices=("tcp", "udp"), type=str, help="Run iperf using TCP", default="udp")
+    parser.add_argument("--iperf-protocol", "--protocol", choices=("tcp", "udp"), type=str, help="Run iperf using TCP", default="tcp")
     parser.add_argument("-f", "--factor", action="append", type=str, dest="qjump_factor", help="QJump throughput factor, e.g. -f5=300", default=[])
     parser.add_argument("--qjump-window", "--qjw", type=int, help="QJump environment's window for ping", default=None)
     parser.add_argument("--qjump-verbosity", type=int, help="QJump TC module verbosity", default=None)
