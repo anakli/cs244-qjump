@@ -13,6 +13,7 @@ def kill_safe(process):
 
 def check_pexec(node, cmd, *args, **kwargs):
     """Like subprocess.check_call, but for nodes."""
+    logger.debug("Running: " + str(cmd))
     out, err, exitcode = node.pexec(cmd, *args, **kwargs)
     if exitcode == 0:
         return
