@@ -51,6 +51,10 @@ class TcpdumpManager(object):
                 for intf in node.intfList():
                     if intf.name == "lo": continue
                     yield intf
+                non_vlan_intfs = set(i.split(".")[0] for i in node.intfNames()) - set(node.intfNames())
+                for intf in non_vlan_intfs:
+                    if intf == "lo": continue
+                    yield intf
         self.start(all_intfs())
 
     def stop(self):

@@ -251,14 +251,13 @@ if __name__ == "__main__":
     parser.add_argument('--no-qjump', dest="qjump", help="Don't use QJump", action="store_false", default=True)
     parser.add_argument('--no-iperf', dest="iperf", help="Don't use Iperf", action="store_false", default=True)
     parser.add_argument('--verbosity', '-v', help="Logging level", default="info")
-    parser.add_argument('--topo', choices=("simple", "dc"), type=str, help="Topology to use", default="dc")
+    parser.add_argument('--topology', choices=("simple", "dc"), type=str, help="Topology to use", default="dc")
     parser.add_argument("--ping-interval", type=float, help="Ping interval", default=0.01)
     parser.add_argument("--bytesq", "-b", type=int, help="QJump's bytesq option", default=None)
     parser.add_argument("--timeq", type=int, help="Qjump's timeq option", default=None)
     parser.add_argument("--ping-priority", "-P", type=int, help="Priority level for ping", default=0)
     parser.add_argument("--iperf-priority", "-I", type=int, help="Priority level for iperf", default=6)
-    parser.add_argument("--iperf-tcp", "--tcp", action="store_const", const="tcp", dest="iperf_protocol", help="Run iperf using TCP", default="udp")
-    parser.add_argument("--iperf-udp", "--udp", action="store_const", const="udp", dest="iperf_protocol", help="Run iperf using UDP (default)", default="udp")
+    parser.add_argument("--iperf-protocol", "--protocol", choices=("tcp", "udp"), type=str, help="Run iperf using TCP", default="udp")
     parser.add_argument("-f", "--factor", action="append", type=str, dest="qjump_factor", help="QJump throughput factor, e.g. -f5=300", default=[])
     parser.add_argument("--qjump-window", "--qjw", type=int, help="QJump environment's window for ping", default=None)
     parser.add_argument("--qjump-verbosity", type=int, help="QJump TC module verbosity", default=None)
@@ -284,7 +283,7 @@ if __name__ == "__main__":
     if args.timeq is not None:
         qjump_module_args["timeq"] = args.timeq
     if args.qjump_verbosity is not None:
-        qjump_module_args["verbosity"] = args.qjump_verbosity
+        qjump_module_args["verbose"] = args.qjump_verbosity
     for setting in args.qjump_factor:
         try:
             priority, factor = map(int, setting.split("="))
@@ -300,11 +299,11 @@ if __name__ == "__main__":
     if args.iperf_protocol == "udp":
         kwargs["bw"] = bw_link * 1e6
 
-    if args.topo == "simple":
+    if args.topology == "simple":
         from topos import SimpleTopo
         topo = SimpleTopo(bw=bw_link)
         kwargs.update(dict(iperf_src='h1', iperf_dst='h2', ping_src='h1', ping_dst='h2'))
-    elif args.topo == "dc":
+    elif args.topology == "dc":
         from topos import DCTopo
         topo = DCTopo(bw=bw_link)
         kwargs.update(dict(iperf_src='h7', iperf_dst='h10', ping_src='h8', ping_dst='h10'))
