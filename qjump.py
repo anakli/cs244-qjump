@@ -107,7 +107,7 @@ def clean_up():
     subprocess.check_call(["mn", "-c"], stdout=subprocess.PIPE)
 
 def filter_out_dropped_pings(values, desc):
-    drops = valus.count(None)
+    drops = values.count(None)
     if drops > 0:
         logger.warning("Ignoring %d ping packets in run %s" % (drops, desc))
     return filter(lambda x: x is not None, values)
