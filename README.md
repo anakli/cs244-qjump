@@ -79,6 +79,8 @@ Some useful options:
 
 - `--time=TIME`, `-t=TIME`: how long to run the experiment
 - `--bw-link=BANDWIDTH`: the bandwidth of various links
+- `--timeq=EPOCH`: a network epoch length, in microseconds
+- `--bytesq=BYTESQ`: how many bytes a high-priority sender can send in a network epoch
 
 To see all options:
     
