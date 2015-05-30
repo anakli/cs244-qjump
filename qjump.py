@@ -140,7 +140,7 @@ def qjump_once(*args, **kwargs):
 def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, \
         cong="cubic", iperf=True, qjump=True, tc_child=False, qjump_module_args=dict(), \
         qjump_env_args=dict(), ping_interval=0.01, tcpdump=False, ping_priority=0,
-        iperf_priority=6, iperf_protocol="udp", bw=None):
+        iperf_priority=4, iperf_protocol="udp", bw=None):
 
     try:
         subprocess.check_call(["sysctl", "-w", "net.ipv4.tcp_congestion_control=%s" % cong])
@@ -252,6 +252,10 @@ if __name__ == "__main__":
     parser.add_argument('--no-iperf', dest="iperf", help="Don't use Iperf", action="store_false", default=True)
     parser.add_argument('--verbosity', '-v', help="Logging level", default="info")
     parser.add_argument('--topology', choices=("simple", "dc"), type=str, help="Topology to use", default="dc")
+    parser.add_argument('--ping_src', type=str, help="host initiating ping", default="h8")
+    parser.add_argument('--ping_dst', type=str, help="host receiving pings", default="h10")
+    parser.add_argument('--iperf_src', type=str, help="iperf client host", default="h7")
+    parser.add_argument('--iperf_dst', type=str, help="iperf server host", default="h10")
     parser.add_argument("--ping-interval", type=float, help="Ping interval", default=0.01)
     parser.add_argument("--bytesq", "-b", type=int, help="QJump's bytesq option", default=None)
     parser.add_argument("--timeq", type=int, help="Qjump's timeq option", default=None)
@@ -306,7 +310,7 @@ if __name__ == "__main__":
     elif args.topology == "dc":
         from topos import DCTopo
         topo = DCTopo(bw=bw_link)
-        kwargs.update(dict(iperf_src='h7', iperf_dst='h10', ping_src='h8', ping_dst='h10'))
+        kwargs.update(dict(iperf_src=args.iperf_src, iperf_dst=args.iperf_dst, ping_src=args.ping_src, ping_dst=args.ping_dst))
 
     if args.runall:
         qjump_all(topo, **kwargs)
