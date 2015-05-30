@@ -127,7 +127,6 @@ def qjump_all(*args, **kwargs):
     os.mkdir(os.path.join(dirname, "ping-alone"))
     kwargs.update(dict(iperf=False, qjump=False, dir=os.path.join(dirname, "ping-alone")))
     ping_alone = qjump(*args, **kwargs)
-    ping_alone = filter_out_dropped_pings(ping_alone, "with ping alone")
 
     clean_up()
 
@@ -135,7 +134,6 @@ def qjump_all(*args, **kwargs):
     os.mkdir(os.path.join(dirname, "ping-iperf-noqjump"))
     kwargs.update(dict(iperf=True, qjump=False, dir=os.path.join(dirname, "ping-iperf-noqjump")))
     ping_noQjump = qjump(*args, **kwargs)
-    ping_noQjump = filter_out_dropped_pings(ping_noQjump, "with ping and iperf, without QJump")
 
     clean_up()
 
@@ -143,8 +141,10 @@ def qjump_all(*args, **kwargs):
     os.mkdir(os.path.join(dirname, "ping-iperf-qjump"))
     kwargs.update(dict(iperf=True, qjump=True, dir=os.path.join(dirname, "ping-iperf-qjump")))
     ping_Qjump = qjump(*args, **kwargs)
-    ping_Qjump = filter_out_dropped_pings(ping_Qjump, "with ping and iperf, without QJump")
 
+    ping_alone = filter_out_dropped_pings(ping_alone, "with ping alone")
+    ping_noQjump = filter_out_dropped_pings(ping_noQjump, "with ping and iperf, without QJump")
+    ping_Qjump = filter_out_dropped_pings(ping_Qjump, "with ping and iperf, without QJump")
     plotter = Plotter()
     plotter.plotCDFs(ping_alone, ping_noQjump, ping_Qjump, dir=dirname, figname="pingCDFs")
 
