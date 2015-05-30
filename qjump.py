@@ -31,7 +31,7 @@ from plotter import Plotter
 from functools import partial
 from vlanhost import VLANHost
 
-DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=28800, bytesq=1550, p0rate=1, p1rate=5, p3rate=30, p4rate=15, p5rate=300, p6rate=300, p7rate=300)
+DEFAULT_QJUMP_MODULE_ARGS = dict(timeq=28800, bytesq=1550, p0rate=1, p1rate=5, p3rate=30, p4rate=300, p5rate=0, p6rate=0, p7rate=300)
 DEFAULT_QJUMP_ENV_ARGS = dict(window=15500)
 DEFAULT_RESULTS_DIR = "."
 
@@ -134,14 +134,15 @@ def qjump_once(*args, **kwargs):
     update_qjump_args(kwargs)
     log_arguments(*args, **kwargs)
     ping_times = qjump(*args, **kwargs)
-    plotter = Plotter()
-    plotter.plotCDF(ping_times, dir=dirname, figname="pingCDF")
-    print("Results saved to " + dirname)
+    if ping_times:
+        plotter = Plotter()
+        plotter.plotCDF(ping_times, dir=dirname, figname="pingCDF")
+        print("Results saved to " + dirname)
 
 def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, \
-        cong="cubic", iperf=True, qjump=True, tc_child=False, qjump_module_args=dict(), \
+        cong="cubic", iperf=True, ping=True, qjump=True, tc_child=False, qjump_module_args=dict(), \
         qjump_env_args=dict(), ping_interval=0.01, tcpdump=False, ping_priority=0,
-        iperf_priority=6, iperf_protocol="udp", bw=None, kernel_log=False):
+        iperf_priority=4, iperf_protocol="udp", bw=None, kernel_log=False):
 
     try:
         subprocess.check_call(["sysctl", "-w", "net.ipv4.tcp_congestion_control=%s" % cong])
@@ -170,7 +171,9 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
             qjumpm.config_8021q(net)
             qjumpm.install_module(**qjump_module_args)
             qjumpm.install_qjump(net, tc_child)
+            print "Setting ping priority to %d" % ping_priority
             hpenv = qjumpm.create_env(priority=ping_priority, **qjump_env_args)
+            print "Setting iperf priority to %d" % iperf_priority
             lpenv = qjumpm.create_env(priority=iperf_priority, **qjump_env_args)
         else:
             hpenv = None
@@ -180,8 +183,9 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
             iperfm = IperfManager(net, iperf_dst, dir=dir)
             iperfm.start(iperf_src, time=expttime, env=lpenv, protocol=iperf_protocol, bw=bw)
 
-        pingm = PingManager(net, ping_src, ping_dst, dir=dir)
-        pingm.start(env=hpenv, interval=ping_interval)
+        if ping:
+            pingm = PingManager(net, ping_src, ping_dst, dir=dir)
+            pingm.start(env=hpenv, interval=ping_interval)
 
         start = time.time()
         last_report = expttime
@@ -199,17 +203,20 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
                 if not all(clients_alive):
                     raise RuntimeError("%d iperf client(s) are dead!" % clients_alive.count(False))
 
+        print 
         print("Done.")
 
-        ping_times = pingm.get_times()
-        if len(ping_times) == 0:
-            raise RuntimeError("There weren't any ping response times!")
         resultsfile = open(os.path.join(dir, "results.txt"), "w")
-        resultsfile.write("Ping results:\n")
-        resultsfile.write(", ".join(map(str, ping_times)))
-        resultsfile.write("\nPing results, sorted:\n")
-        resultsfile.write(", ".join(map(str, sorted(ping_times))))
-        print_stats(ping_times, "ping times")
+
+        if ping:
+            ping_times = pingm.get_times()
+            if len(ping_times) == 0:
+                raise RuntimeError("There weren't any ping response times!")
+            resultsfile.write("Ping results:\n")
+            resultsfile.write(", ".join(map(str, ping_times)))
+            resultsfile.write("\nPing results, sorted:\n")
+            resultsfile.write(", ".join(map(str, sorted(ping_times))))
+            print_stats(ping_times, "ping times")
 
         if iperf:
             iperf_bandwidths = iperfm.get_bandwidths()
@@ -264,8 +271,13 @@ if __name__ == "__main__":
     parser.add_argument('--cong', help="Congestion control algorithm to use", default="cubic") # Linux uses CUBIC-TCP by default
     parser.add_argument('--no-qjump', dest="qjump", help="Don't use QJump", action="store_false", default=True)
     parser.add_argument('--no-iperf', dest="iperf", help="Don't use Iperf", action="store_false", default=True)
+    parser.add_argument('--no-ping', dest="ping", help="Don't use ping", action="store_false", default=True)
     parser.add_argument('--verbosity', '-v', help="Logging level", default="info")
     parser.add_argument('--topology', choices=("simple", "dc"), type=str, help="Topology to use", default="dc")
+    parser.add_argument('--ping_src', type=str, help="host initiating ping", default="h8")
+    parser.add_argument('--ping_dst', type=str, help="host receiving pings", default="h10")
+    parser.add_argument('--iperf_src', type=str, help="iperf client host", default="h7")
+    parser.add_argument('--iperf_dst', type=str, help="iperf server host", default="h10")
     parser.add_argument("--ping-interval", type=float, help="Ping interval", default=0.01)
     parser.add_argument("--bytesq", "-b", type=int, help="QJump's bytesq option", default=None)
     parser.add_argument("--timeq", type=int, help="Qjump's timeq option", default=None)
@@ -322,7 +334,7 @@ if __name__ == "__main__":
     elif args.topology == "dc":
         from topos import DCTopo
         topo = DCTopo(bw=bw_link)
-        kwargs.update(dict(iperf_src='h7', iperf_dst='h10', ping_src='h8', ping_dst='h10'))
+        kwargs.update(dict(iperf_src=args.iperf_src, iperf_dst=args.iperf_dst, ping_src=args.ping_src, ping_dst=args.ping_dst))
 
     if args.runall:
         qjump_all(topo, **kwargs)
@@ -333,6 +345,6 @@ if __name__ == "__main__":
             kwargs["dir"] = os.path.join(dirname, "p%d" % priority)
             qjump_all(topo, **kwargs)
     else:
-        qjump_once(topo, iperf=args.iperf, qjump=args.qjump, **kwargs)
+        qjump_once(topo, iperf=args.iperf, ping=args.ping, qjump=args.qjump, **kwargs)
 
 
