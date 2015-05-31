@@ -15,7 +15,7 @@ Instructions
    US West (Oregon) region to find this.) We used a c3.xlarge instance. Log into
    the instance.
 
-   (For more details, see the [CS 244 page on EC2 setup](http://web.stanford.edu/class/cs244/ec2setup.html).
+   (For more details, see the [CS 244 page on EC2 setup](http://web.stanford.edu/class/cs244/ec2setup.html).)
 
 2. Clone this repository, the [QJump traffic control (TC) module](https://github.com/czlee/qjump-tc) and the [QJump Application Utility](https://github.com/camsas/qjump-app-util).
    Also, clone our [modified version of Mininet](https://github.com/czlee/mininet), but clone it to the directory
