@@ -227,7 +227,7 @@ def qjump(topo, iperf_src, iperf_dst, ping_src, ping_dst, dir=".", expttime=10, 
                     print("There were %d seconds remaining." % secs_remaining)
                     raise RuntimeError("%d iperf client(s) are dead!" % clients_alive.count(False))
 
-        print 
+        print
         print("Done.")
 
         resultsfile = open(os.path.join(dir, "results.txt"), "w")
@@ -291,7 +291,7 @@ if __name__ == "__main__":
     parser = ArgumentParser(description="Qjump arguments")
     parser.add_argument('--bw-link', '-B', type=str, help="Bandwidth of host links (Mb/s)", default="10")
     parser.add_argument('--dir', '-d', help="Directory to store outputs", default=None)
-    parser.add_argument('--time', '-t', help="Duration (sec) to run the experiment", type=float, default=10.0)
+    parser.add_argument('--time', '-t', help="Duration (sec) to run the experiment", type=float, default=30.0)
     parser.add_argument('--cong', help="Congestion control algorithm to use", default="cubic") # Linux uses CUBIC-TCP by default
     parser.add_argument('--no-qjump', dest="qjump", help="Don't use QJump", action="store_false", default=True)
     parser.add_argument('--no-iperf', dest="iperf", help="Don't use Iperf", action="store_false", default=True)
